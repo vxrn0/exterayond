@@ -1132,7 +1132,7 @@ export class AppPollsManager extends AppManager {
 
     const paidStars = params.confirmedPaymentResult?.starsAmount || undefined;
 
-    const updates = await this.apiManager.invokeApi('messages.sendMedia', {
+    const updates = await this.appMessagesManager.exteraGhostSendHook('messages.sendMedia', peerId, this.apiManager.invokeApi('messages.sendMedia', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       media: inputMediaPoll,
       message: parsedPayload.description.text,
@@ -1147,7 +1147,7 @@ export class AppPollsManager extends AppManager {
       invert_media: params.invertMedia,
       effect: params.effect,
       allow_paid_stars: paidStars
-    });
+    }));
 
     this.apiUpdatesManager.processUpdateMessage(updates)
     this.apiUpdatesManager.processPaidMessageUpdate({
@@ -1165,6 +1165,14 @@ export class AppPollsManager extends AppManager {
 
     this.appMessagesManager.stripEphemeralReply(params);
     await this.appMessagesManager.checkSendOptions(params);
+
+    // * the poll send is the one send outside appMessagesManager's own send
+    // * functions: the ghost send-pipeline's parameter half (GHOST-09's
+    // * scheduled date, GHOST-08's silent flag) applies here, before the
+    // * local message is generated with the decided date; paid polls are
+    // * excluded like Android's invoice/stars sends. The invoke itself goes
+    // * through the hook in `invokeSendPoll`.
+    this.appMessagesManager.exteraGhostApplySendParams(peerId, params, !!params.confirmedPaymentResult?.starsAmount);
 
     const message = this.appMessagesManager.generateOutgoingMessage(peerId, params);
 

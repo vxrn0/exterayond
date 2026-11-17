@@ -250,7 +250,7 @@ describe('the .extera main-menu aliases (EtgBackup.addMainMenuEntries)', () => {
   });
 });
 
-type FakeButton = {name: string, oeMenuId?: number, separatorDown?: boolean};
+type FakeButton = {name: string, oeMenuId?: number, separatorDown?: boolean, separator?: true | HTMLElement};
 
 describe('applyMainMenuLayoutToButtons (the tools menu consumption)', () => {
   beforeEach(RESET_STORAGE);
@@ -258,7 +258,7 @@ describe('applyMainMenuLayoutToButtons (the tools menu consumption)', () => {
   const stock: FakeButton[] = [
     {name: 'addAccount'},
     {name: 'createANew'},
-    {name: 'saved', oeMenuId: 11},
+    {name: 'saved', oeMenuId: 11, separator: true},
     {name: 'archive', oeMenuId: 14},
     {name: 'stories'},
     {name: 'contacts', oeMenuId: 6},
@@ -293,5 +293,37 @@ describe('applyMainMenuLayoutToButtons (the tools menu consumption)', () => {
     setExterayondSetting('OEAppearanceMainMenuLayout', '14,8;6,11,10');
     const out = applyMainMenuLayoutToButtons(stock);
     expect(out.find((button) => button.name === 'archive')?.separatorDown).toBeUndefined();
+  });
+
+  it('the divider reset restores the pristine separator marks, even a cached runtime <hr> (packet 058 F-1)', () => {
+    // * ButtonMenuItem caches the <hr> it built back into `separator`; a
+    // * `separatorDown`-only reset used to re-attach the stale element above
+    // * the item, and an item with a stock frame line lost the `true` for
+    // * good. The stock array carries saved's pristine `true` (captured by
+    // * the first apply of this describe), the runtime values stand in for
+    // * the render's conversion
+    setExterayondSetting('OEAppearanceMainMenuLayout', '11,-1,14,8;6,10');
+    const cached = new Map(stock.map((button) => [button.name, button]));
+    const saved = cached.get('saved');
+    const archive = cached.get('archive');
+    const stockHr = document.createElement('hr');
+    const dividerHr = document.createElement('hr');
+    saved.separator = stockHr;
+    archive.separator = dividerHr;
+    archive.separatorDown = true;
+
+    // * the layout drops the archive divider; the stock saved line comes back
+    setExterayondSetting('OEAppearanceMainMenuLayout', '11,14,8;6,10');
+    const out = applyMainMenuLayoutToButtons(stock);
+    expect(out.find((button) => button.name === 'saved')?.separator).toBe(true);
+    expect(out.find((button) => button.name === 'archive')?.separator).toBeUndefined();
+    expect(out.find((button) => button.name === 'archive')?.separatorDown).toBeUndefined();
+
+    // * the stock path resets too: a stale runtime <hr> cannot survive a
+    // * return to the uncustomized menu
+    setExterayondSetting('OEAppearanceMainMenuLayout', '');
+    const stockOut = applyMainMenuLayoutToButtons(stock);
+    expect(stockOut.find((button) => button.name === 'archive')?.separator).toBeUndefined();
+    expect(stockOut.find((button) => button.name === 'saved')?.separator).toBe(true);
   });
 });

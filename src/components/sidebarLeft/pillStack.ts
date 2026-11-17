@@ -3,7 +3,7 @@ import type InputSearch from '@components/inputSearch';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import type {Middleware} from '@helpers/middleware';
 import formatBytes from '@helpers/formatBytes';
-import {i18n, I18n} from '@lib/langPack';
+import {I18n} from '@lib/langPack';
 import type {LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {getVisiblePillIds, getRegisteredPill, nextPillIndex, PILL_IDS} from '@stores/exterayondPills';
@@ -23,6 +23,10 @@ import {exterayondSettings, setExterayondSetting} from '@stores/exterayondSettin
  * mouse wheel and ArrowUp/ArrowDown on the pill itself (Android's vertical
  * swipe), wrapping per `OEPillInfiniteScrolling` (PILLS-04). The index the
  * strip restores is `OEPillLastActiveId` (`PillStackController.rebuildContents`).
+ *
+ * The web slot is shared: the stock stories strip folds into the field's
+ * inline end as the list scrolls, so the pills yield while stories render in
+ * the header (`HideStoriesFromHeader` off).
  */
 
 /** Android `CachePill.getRefreshInterval` (3 minutes). */
@@ -51,8 +55,9 @@ const cachePillRenderer = (button: HTMLButtonElement, valueEl: HTMLElement, name
       );
       const [files, chunks] = await Promise.all([collectCachedFilesSizes(), collectCachedVideoStreamChunksSize()]);
       if(disposed) return;
-      // * formatBytes returns a realtime i18n element; the pill's value is its text
-      valueEl.textContent = formatBytes(files.totalSize + chunks, 1).textContent;
+      // * formatBytes returns a realtime i18n element — it is appended whole,
+      // * not snapshotted, so a late langpack resolution still lands
+      valueEl.replaceChildren(formatBytes(files.totalSize + chunks, 1));
       button.setAttribute('aria-label', `${I18n.format(nameKey, true)}: ${valueEl.textContent}`);
     } catch(e) {
       // * no CacheStorage (Firefox private mode, denied storage): Android's
@@ -106,8 +111,14 @@ export const attachPillStackStrip = (
   let currentIndex = 0;
 
   const updateVisibility = () => {
-    // * Android hides the strip while the search holds text
-    container.classList.toggle('is-hidden', input.value.length > 0);
+    // * Android hides the strip while the search holds text. The web adds one
+    // * more tenant of the same slot: the stock stories strip folds into the
+    // * field's inline end as the list scrolls, and the two cannot share it —
+    // * so the pills yield while stories render in the header
+    // * (`HideStoriesFromHeader` off; the store is the same source the
+    // * `oe-hide-stories` root class derives from)
+    const storiesInHeader = !exterayondSettings.HideStoriesFromHeader;
+    container.classList.toggle('is-hidden', input.value.length > 0 || storiesInHeader);
   };
 
   /** Shows the pill at the index; the others leave the tab order and the tree. */
@@ -138,14 +149,16 @@ export const attachPillStackStrip = (
   };
 
   let lastWheelSwitch = 0;
-  container.addEventListener('wheel', (e) => {
+  const onWheel = (e: WheelEvent) => {
     if(!e.deltaY) return;
     e.preventDefault();
     const now = Date.now();
     if(now - lastWheelSwitch < WHEEL_SWITCH_COOLDOWN) return;
     lastWheelSwitch = now;
     switchPill(e.deltaY < 0 ? 1 : -1);
-  }, {passive: false});
+  };
+
+  container.addEventListener('wheel', onWheel, {passive: false});
 
   const rebuild = () => {
     // * the old pills' renderers own intervals — disposed on every rebuild;
@@ -159,13 +172,17 @@ export const attachPillStackStrip = (
       pill.remove();
     }
 
-    const ids = getVisiblePillIds();
+    // * one list drives both rendering and persistence — the strip can only
+    // * render the kinds it owns, and indexing two differently filtered
+    // * arrays would persist the wrong id on switch
+    const ids = getVisiblePillIds().filter((id) => {
+      const registration = getRegisteredPill(id);
+      return !!registration && registration.kind === 'cache';
+    });
     pills = [];
     container.classList.toggle('has-pills', ids.length > 0);
     for(const id of ids) {
       const registration = getRegisteredPill(id);
-      if(!registration || registration.kind !== 'cache') continue;
-
       const nameKey = registration.nameKey;
       const button = document.createElement('button');
       button.type = 'button';
@@ -173,11 +190,11 @@ export const attachPillStackStrip = (
       button.setAttribute('aria-label', I18n.format(nameKey, true));
 
       const icon = Icon(PILL_ICONS[registration.kind], 'oe-pill-icon');
-      const nameEl = i18n(nameKey);
-      nameEl.classList.add('oe-pill-name');
       const valueEl = document.createElement('span');
       valueEl.className = 'oe-pill-value';
-      button.append(icon, nameEl, valueEl);
+      // * Android's CachePill carries the size alone — the name lives in the
+      // * pill editor and the long-press options, never inside the pill
+      button.append(icon, valueEl);
 
       const renderer = PILL_RENDERERS[registration.kind](button, valueEl, nameKey);
       pillRenderers.push(renderer);
@@ -209,9 +226,20 @@ export const attachPillStackStrip = (
     updateVisibility();
   };
 
+  // * the layout change writes both halves (active + hidden), each
+  // * announcing its key — the two events coalesce into one rebuild so the
+  // * pill renderers' intervals and imports restart once
+  let rebuildQueued = false;
   const onSettingsUpdated = ({key}: {key: string}) => {
     if(key === 'OEPillActivePills' || key === 'OEPillHiddenPills') {
-      rebuild();
+      if(rebuildQueued) return;
+      rebuildQueued = true;
+      queueMicrotask(() => {
+        rebuildQueued = false;
+        rebuild();
+      });
+    } else if(key === 'HideStoriesFromHeader') {
+      updateVisibility();
     }
   };
 
@@ -220,6 +248,7 @@ export const attachPillStackStrip = (
   middleware.onClean(() => {
     input.removeEventListener('input', updateVisibility);
     rootScope.removeEventListener('exterayond_settings_updated', onSettingsUpdated);
+    container.removeEventListener('wheel', onWheel);
     for(const renderer of pillRenderers) {
       renderer.dispose?.();
     }

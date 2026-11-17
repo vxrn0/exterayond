@@ -35,8 +35,9 @@
   box-shadow: var(--column-box-shadow);
   z-index: 1;
   margin-block: var(--page-chats-padding);
-  // --folders-sidebar-offset (0px or 5.5rem) sits side-by-side with the
-  // page padding so the column lands 8px past the folders panel when shown.
+  // --folders-sidebar-offset (0px or 80px: the folders panel's 72px + an
+  // 8px gap, written by updateColumnWidths) sits side-by-side with the page
+  // padding so the column lands 8px past the folders panel when shown.
   margin-inline-start: calc(var(--page-chats-padding) + var(--folders-sidebar-offset));
 
   // * exteraless attached sidebar (OEAppearanceAttachedSidebar): the panel
@@ -463,10 +464,12 @@
       }
 
       // * the switch animation (PILLS-03): a fade at reduced level, the full
-      // * slide at full, instant when animations are off
+      // * slide at full, instant when animations are off. The shift stays
+      // * within the field's free 8px per side (44px field, 28px pill) — a
+      // * bigger translate clips against the field's rounded edge
       @keyframes oe-pill-slide-up {
         from {
-          transform: translateY(50%);
+          transform: translateY(8px);
           opacity: 0;
         }
 
@@ -478,7 +481,7 @@
 
       @keyframes oe-pill-slide-down {
         from {
-          transform: translateY(-50%);
+          transform: translateY(-8px);
           opacity: 0;
         }
 
@@ -515,6 +518,9 @@
 
       .oe-pill-value {
         opacity: .85;
+
+        // * the realtime size element (an i18n span) inherits the pill's
+        // * styles; nothing else is rendered inside the pill
       }
 
       .night & {
@@ -1878,3 +1884,18 @@ html.oe-hide-new-chat-button #new-menu {
     font-size: 1.25rem;
   }
 }
+
+// * the ghost pictogram (GHOST-10/GHOST-11) — Android's `ayu_ghost` drawable
+// * as an inline SVG; the svg's paths carry fill="currentColor", so the
+// * color follows the owning control
+.extera-ghost-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+

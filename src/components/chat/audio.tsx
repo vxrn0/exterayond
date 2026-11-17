@@ -1,4 +1,4 @@
-import {createEffect, createSignal, JSX, Show, onCleanup} from 'solid-js';
+import {createEffect, createRoot, createSignal, JSX, Show, onCleanup} from 'solid-js';
 import appMediaPlaybackController, {AppMediaPlaybackController} from '@components/appMediaPlaybackController';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -235,9 +235,14 @@ export default function createChatAudio(
 
   // PLAYER-29/30 (`OEPlayerMiniNext`/`OEPlayerMiniClose`, defaults true = the
   // stock plate): the next-track and close buttons leave with their toggles
-  // off, like Android's `PlayerMiniView.applyStyle` hides its own rows.
-  createEffect(() => nextEl.classList.toggle('hide', !exterayondSettings.OEPlayerMiniNext));
-  createEffect(() => closeEl.classList.toggle('hide', !exterayondSettings.OEPlayerMiniClose));
+  // off, like Android's `PlayerMiniView.applyStyle` hides its own rows. The
+  // plate is created imperatively, outside any Solid root — these effects get
+  // their own and the dispose rides the plate's destroy.
+  const disposeMiniToggles = createRoot((dispose) => {
+    createEffect(() => nextEl.classList.toggle('hide', !exterayondSettings.OEPlayerMiniNext));
+    createEffect(() => closeEl.classList.toggle('hide', !exterayondSettings.OEPlayerMiniClose));
+    return dispose;
+  });
 
   // Click on the central content (title/subtitle) → open the source chat /
   // saved music tab. Clicks anywhere else on the plate do nothing.
@@ -386,6 +391,7 @@ export default function createChatAudio(
       listenerSetter.removeAll();
       mediaListenerSetter.removeAll();
       plate.destroy();
+      disposeMiniToggles();
     }
   };
 }

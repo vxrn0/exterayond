@@ -203,11 +203,23 @@ export function setFoldersSidebarShown(value: boolean): void {
   updateColumnWidths();
 }
 
+/**
+ * The column default, capped by the box the columns actually lay out in —
+ * html's content box (the viewport minus its safe-area padding), not the raw
+ * viewport. The same rule the horizontal space math in `updateColumnWidths`
+ * follows; the inset is 0 on desktop, so this is a no-op there.
+ */
+function getDefaultColumnWidth(): number {
+  const rootStyle = getComputedStyle(document.documentElement);
+  const safeAreaPaddingX = (parseFloat(rootStyle.paddingLeft) || 0) + (parseFloat(rootStyle.paddingRight) || 0);
+  return Math.min(getAppWindow().innerWidth - safeAreaPaddingX, DEFAULT_COLUMN_WIDTH);
+}
+
 function computeVisualLeftWidth(): number {
   const vw = getAppWindow().innerWidth;
   const isMobile = mediaSizes.isMobile;
   const isFloatingLeft = mediaSizes.isLessThanFloatingLeftSidebar && !isMobile;
-  const defaultColumnWidth = Math.min(vw, DEFAULT_COLUMN_WIDTH);
+  const defaultColumnWidth = getDefaultColumnWidth();
 
   // mobile — SCSS handhelds rule fills the parent grid cell regardless
   // (width: auto; max-width: none). The variable is still consistent.
@@ -229,7 +241,7 @@ function computeLayoutLeftWidth(): number {
   const vw = getAppWindow().innerWidth;
   const isMobile = mediaSizes.isMobile;
   const isFloatingLeft = mediaSizes.isLessThanFloatingLeftSidebar && !isMobile;
-  const defaultColumnWidth = Math.min(vw, DEFAULT_COLUMN_WIDTH);
+  const defaultColumnWidth = getDefaultColumnWidth();
 
   if(isMobile) return vw;
   if(isFloatingLeft) return defaultColumnWidth;
@@ -240,7 +252,7 @@ function computeLayoutLeftWidth(): number {
 function computeRightWidth(): number {
   const vw = getAppWindow().innerWidth;
   if(mediaSizes.isMobile) return vw;
-  return userPreferredRightWidth ?? Math.min(vw, DEFAULT_COLUMN_WIDTH);
+  return userPreferredRightWidth ?? getDefaultColumnWidth();
 }
 
 const last = {
@@ -279,7 +291,9 @@ export default function updateColumnWidths(): void {
   const safeAreaPaddingX = (parseFloat(rootStyle.paddingLeft) || 0) + (parseFloat(rootStyle.paddingRight) || 0);
   const availableWidth = vw - safeAreaPaddingX;
 
-  const defaultColumnWidth = Math.min(vw, DEFAULT_COLUMN_WIDTH);
+  // * the default caps against the box the columns lay out in (content box
+  // * minus the safe-area padding) — availableWidth is already that box
+  const defaultColumnWidth = Math.min(availableWidth, DEFAULT_COLUMN_WIDTH);
   const visualLeftWidth = computeVisualLeftWidth();
   const layoutLeftWidth = computeLayoutLeftWidth();
   const rightWidth = computeRightWidth();

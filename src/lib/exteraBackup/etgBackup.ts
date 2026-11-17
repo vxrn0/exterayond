@@ -14,7 +14,7 @@ import {OE_DEFAULTS, clampExterayondSetting, exterayondSettings, setExterayondSe
 import type {ExterayondSettings, ExterayondSettingsKey} from '@stores/exterayondSettings';
 import type {FormatterArguments} from '@lib/langPack';
 import {isArchiveHidden, setArchiveHidden} from '@stores/exterayondPreferences';
-import {applyMainMenuHalf, resolveMainMenuLayout, isMenuIdArray} from '@stores/exterayondMenuLayout';
+import {applyMainMenuHalf, isMainMenuCustomized, resolveMainMenuLayout, isMenuIdArray} from '@stores/exterayondMenuLayout';
 import {PLUGINS_DEVELOPER_MODE_KEY, pluginsManager} from '@plugins/manager';
 import {invisibleEncryptor} from './invisibleEncryptor';
 
@@ -279,8 +279,12 @@ export const etgBackup = {
     for(const entry of SUPPORTED) {
       const ours = entry.storeKey === 'HideArchive' ? isArchiveHidden() :
         entry.storeKey === 'StickerTimeMode' ? getStickerTimeMode(settings) :
-        entry.storeKey === 'MainMenuLayoutHalf' ? JSON.stringify(resolveMainMenuLayout().visible) :
-        entry.storeKey === 'MainMenuHiddenHalf' ? JSON.stringify(resolveMainMenuLayout().hidden) :
+        // * an uncustomized menu exports nothing: writing the empty halves
+        // * would import back as `";"` — a customized key that collapses the
+        // * target's menu to the web-only composites (and wipes Android's
+        // * own layout on its import). Stock = nothing to transfer.
+        entry.storeKey === 'MainMenuLayoutHalf' ? (isMainMenuCustomized() ? JSON.stringify(resolveMainMenuLayout().visible) : undefined) :
+        entry.storeKey === 'MainMenuHiddenHalf' ? (isMainMenuCustomized() ? JSON.stringify(resolveMainMenuLayout().hidden) : undefined) :
         settings[entry.storeKey as ExterayondSettingsKey];
       if(ours === undefined) continue;
 

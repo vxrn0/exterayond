@@ -72,7 +72,11 @@ function makePollsManager(messages: Message.message[] = []) {
       dispatchMessageEditEvent: (message: Message.message) => dispatched.push({
         event: message.pFlags.ephemeral ? 'ephemeral_history_edit' : 'message_edit',
         payload: {message}
-      })
+      }),
+      // * the ghost send-pipeline's two entry points the poll send goes
+      // * through: the hook is a pass-through, the parameter apply is a noop
+      exteraGhostSendHook: (_method: string, _peerId: PeerId, promise: Promise<any>) => promise,
+      exteraGhostApplySendParams: () => {}
     },
     appWebPagesManager: {getCachedWebPage: (): WebPage => undefined},
     rootScope: {
@@ -146,7 +150,11 @@ describe('AppPollsManager webpage index', () => {
         processPaidMessageUpdate: vi.fn()
       },
       appMessagesManager: {
-        getInputEntities: (): undefined => undefined
+        getInputEntities: (): undefined => undefined,
+        // * the ghost send-pipeline's two entry points the poll send goes
+        // * through: the hook is a pass-through, the parameter apply is a noop
+        exteraGhostSendHook: (_method: string, _peerId: PeerId, promise: Promise<any>) => promise,
+        exteraGhostApplySendParams: () => {}
       },
       appPeersManager: {
         getInputPeerById: () => ({_: 'inputPeerSelf'}),

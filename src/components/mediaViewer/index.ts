@@ -27,6 +27,7 @@ import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import TranslatableMessage from '@components/translatableMessage';
 import {MAX_FILE_SAVE_SIZE} from '@appManagers/constants';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
 import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import Button from '@components/button';
@@ -95,6 +96,14 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   private albumThumbIndex = createSignal(0);
   // * the same object for a thumb while its album stays on screen, so the strip moves it instead of redrawing
   private albumThumbCache: Map<string, AlbumThumbItem> = new Map();
+  /** The last options `setMessageActionVisibility` ran with — the MENU-07 toggle re-runs it live. */
+  private lastActionVisibility?: Parameters<AppMediaViewer['setMessageActionVisibility']>[0];
+  private forwardToggleListenerBound = false;
+  private forwardToggleListener = ({key}: {key: string}) => {
+    if(key === 'MediaViewerMenuItemForward' && this.lastActionVisibility) {
+      this.setMessageActionVisibility(this.lastActionVisibility);
+    }
+  };
 
   get searchContext() {
     return this.listLoader.searchContext;
@@ -623,6 +632,21 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     cantEdit: boolean,
     editLangKey?: LangPackKey
   }) {
+    // * MENU-07: the toggle may flip while the viewer stays open on the same
+    // * media — the last options are kept so the settings event can re-run
+    // * this pass. The viewer is constructed per open, so the listener binds
+    // * once per open session and leaves with its middleware (the base
+    // * destroys it on close, and the next open gets a fresh one)
+    this.lastActionVisibility = options;
+    if(!this.forwardToggleListenerBound) {
+      this.forwardToggleListenerBound = true;
+      rootScope.addEventListener('exterayond_settings_updated', this.forwardToggleListener);
+      this.middlewareHelper.get().onClean(() => {
+        this.forwardToggleListenerBound = false;
+        rootScope.removeEventListener('exterayond_settings_updated', this.forwardToggleListener);
+      });
+    }
+
     if(options.editLangKey) {
       this.btnMenuEditText.compareAndUpdate({key: options.editLangKey});
       this.buttons.edit.setAttribute('aria-label', I18n.format(options.editLangKey, true));

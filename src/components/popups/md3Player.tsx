@@ -71,6 +71,8 @@ export default function showMd3Player(controller: AppMediaPlaybackController) {
       if(!isSessionLeaving(session)) action();
     };
 
+    /** The doc whose artwork is currently in the cover box. */
+    let coverDocId: DocId;
     const follow = (next = controller.getPlayingDetails()) => {
       if(!next || next.doc.type !== 'audio' || isSessionLeaving(session)) {
         context.hide();
@@ -84,6 +86,13 @@ export default function showMd3Player(controller: AppMediaPlaybackController) {
       mediaListeners.add(next.media)('pause', () => setPlaying(false));
       progress.setMedia({media: next.media, duration: next.doc.duration});
       setTime(next.media.currentTime || 0);
+      // * the controller fires 'play' on every resume too — the artwork only
+      // * rebuilds when the track actually changed, an unpause must not flash
+      // * (and re-fetch) the cover
+      if(next.doc.id === coverDocId) {
+        return;
+      }
+      coverDocId = next.doc.id;
       coverCleanup?.();
       cover.replaceChildren();
       if(next.doc.thumbs?.length) {

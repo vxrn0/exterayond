@@ -306,16 +306,39 @@ export const WEB_MENU_STOCK_ORDER: readonly number[] = [
  * Applies the layout to the tools menu's pristine button list (FOLD-10/11/12).
  * An uncustomized key returns the list untouched — byte-for-byte stock. A
  * customized one keeps the menu's web-only composites in their stock frame
- * (the items before the first id-mapped one, the items between them, and the
- * items after the last one), lays the id-mapped items out in the visible
- * order, skips ids without a web backing (the pill-registry rule), and turns
- * a DIVIDER into a hairline after the previous item. Settings was already
- * forced visible by `resolveMainMenuLayout`.
+ * (the items before the first id-mapped one stay before the block, the items
+ * between them and the ones after the last id-mapped one stay after it), lays
+ * the id-mapped items out in the visible order, skips ids without a web
+ * backing (the pill-registry rule), and turns a DIVIDER into a hairline after
+ * the previous item. Settings was already forced visible by
+ * `resolveMainMenuLayout`. Note the middle composites' pinning: items like
+ * Stories or the Ghost item live between the id-mapped ones in the stock
+ * order, so under a customized layout they render above the whole laid-out
+ * block rather than at their stock neighbors — there is no stable "before
+ * Settings" spot once Settings itself is reordered.
  */
-export const applyMainMenuLayoutToButtons = <T extends {oeMenuId?: number, separatorDown?: boolean}>(
+export const applyMainMenuLayoutToButtons = <T extends {oeMenuId?: number, separatorDown?: boolean, separator?: boolean | HTMLElement}>(
   buttons: readonly T[],
   raw: string = exterayondSettings.OEAppearanceMainMenuLayout
 ): T[] => {
+  // * the same item objects are reused on every open (the menu toggle tracks
+  // * them by identity), so every divider mark resets before each
+  // * application — on ALL items, stock or customized: a DIVIDER may sit
+  // * under a web-only composite too, and ButtonMenuItem caches the runtime
+  // * <hr> it built back into `separator`, where a stale element would
+  // * survive a `separatorDown`-only reset. The pristine mark (stock `true`
+  // * / `undefined`) is captured on the first application — onOpenBefore
+  // * runs before the menu's first render, so the cache never saw a
+  // * converted value yet
+  for(const item of buttons) {
+    if(!separatorPristine.has(item)) {
+      separatorPristine.set(item, item.separator);
+    }
+
+    item.separatorDown = undefined;
+    item.separator = separatorPristine.get(item);
+  }
+
   if(!isMainMenuCustomized(raw)) {
     return [...buttons];
   }
@@ -331,12 +354,6 @@ export const applyMainMenuLayoutToButtons = <T extends {oeMenuId?: number, separ
     .filter((button) => button.oeMenuId === undefined);
   const post = buttons.slice(mappedIndexes[mappedIndexes.length - 1] + 1);
   const byId = new Map(buttons.filter((button) => button.oeMenuId !== undefined).map((button) => [button.oeMenuId as number, button]));
-
-  // * the same item objects are reused on every open (the menu toggle tracks
-  // * them by identity), so the divider marks reset before each application
-  for(const item of byId.values()) {
-    item.separatorDown = undefined;
-  }
 
   const out: T[] = [...pre, ...middleWebOnly];
   for(const id of layout.visible) {
@@ -357,6 +374,13 @@ export const applyMainMenuLayoutToButtons = <T extends {oeMenuId?: number, separ
 
   return [...out, ...post];
 };
+
+/**
+ * The stock `separator` mark of every menu item the layout pass has seen
+ * (`true` for the stock frame lines, `undefined`/`false` otherwise) — the
+ * pristine half of the divider reset above.
+ */
+const separatorPristine = new WeakMap<object, boolean | HTMLElement | undefined>();
 
 /** The type helper for the store's pick. */
 export type MainMenuLayoutSettings = Pick<ExterayondSettings, 'OEAppearanceMainMenuLayout'>;

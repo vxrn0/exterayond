@@ -130,16 +130,34 @@ describe('the pill strip mount (PillStackController.attach)', () => {
     expect(strip.container.classList.contains('is-hidden')).toBe(false);
   });
 
-  it('a layout change through the store rebuilds the strip live', () => {
+  it('yields the field to the stories strip while stories render in the header', () => {
     const {strip} = attachStrip();
-    // * the cache pill moves to the hidden list (the hub's click move)
+    expect(strip.container.classList.contains('is-hidden')).toBe(false);
+
+    // * the stories strip folds into the field's inline end as the list
+    // * scrolls — the two widgets cannot share the slot, so with
+    // * `HideStoriesFromHeader` off the pills step aside (live through the
+    // * store's settings event)
+    setExterayondSetting('HideStoriesFromHeader', false);
+    expect(strip.container.classList.contains('is-hidden')).toBe(true);
+
+    setExterayondSetting('HideStoriesFromHeader', true);
+    expect(strip.container.classList.contains('is-hidden')).toBe(false);
+  });
+
+  it('a layout change through the store rebuilds the strip live', async() => {
+    const {strip} = attachStrip();
+    // * the cache pill moves to the hidden list (the hub's click move); the
+    // * two half-writes coalesce into one rebuild
     setExterayondSetting('OEPillActivePills', '');
     setExterayondSetting('OEPillHiddenPills', '5');
+    await flush();
     expect(strip.container.querySelectorAll('.oe-pill')).toHaveLength(0);
     expect(strip.container.classList.contains('has-pills')).toBe(false);
 
     setExterayondSetting('OEPillActivePills', '5');
     setExterayondSetting('OEPillHiddenPills', '');
+    await flush();
     const pills = [...strip.container.querySelectorAll('.oe-pill')] as HTMLButtonElement[];
     expect(pills).toHaveLength(1);
     expect(pills[0].classList.contains('is-hidden-pill')).toBe(false);
