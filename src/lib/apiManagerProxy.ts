@@ -790,10 +790,27 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return !!this.serviceWorkerRegistration;
   }
 
-  private _registerServiceWorker() {
+  private async _registerServiceWorker() {
     // if(import.meta.env.DEV && IS_SAFARI) {
     //   return;
     // }
+
+    if(import.meta.env.DEV) {
+      // * the dev server serves public/ as-is, so a service worker left on
+      // * this origin by a production build (a hashed /sw-*.js) stays active
+      // * and its fetch handler breaks the dev graph's SharedWorker module
+      // * fetches — the MTProto worker handshake never completes and the boot
+      // * stalls on loadAllStates without a single page-side error. The dev
+      // * worker lives under /src/, so any other script URL is a stale build.
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for(const registration of registrations) {
+        const script = (registration.active || registration.installing || registration.waiting)?.scriptURL ?? '';
+        if(!script.includes('/src/')) {
+          this.log('unregistering a stale service worker', script);
+          await registration.unregister();
+        }
+      }
+    }
 
     navigator.serviceWorker.register(
       // * doesn't work
@@ -873,7 +890,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     // ! I hate webpack - it won't load it by using worker.register, only navigator.serviceWorker will do it.
     const worker = navigator.serviceWorker;
-    this._registerServiceWorker();
+    void this._registerServiceWorker();
 
     // worker.startMessages();
 
