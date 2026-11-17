@@ -15,12 +15,15 @@ import {
   ghostModeTarget,
   ghostOfflineAfterSendApplies,
   ghostReadAfterSendApplies,
+  ghostScheduledSendApplies,
+  ghostSilentByDefault,
   ghostStatusToAnnounce,
   ghostSuppressesReadReceipts,
   ghostSuppressesStoryReads,
   GHOST_ESSENTIAL_KEYS,
   GHOST_FLAG_DEFAULTS,
   GHOST_OFFLINE_AFTER_SEND_DELAY,
+  GHOST_SCHEDULED_SEND_DELAY_SECONDS,
   isFlagInGhostState,
   isGhostModeActive,
   setExterayondGhostFlags,
@@ -70,7 +73,9 @@ describe('the Ghost Mode decisions (NekoConfig ghost block)', () => {
       sendOnlinePackets: true,
       sendUploadProgress: true,
       sendOfflinePacketAfterOnline: false,
-      markReadAfterSend: true
+      markReadAfterSend: true,
+      silentMessageByDefault: false,
+      ghostScheduledSend: false
     });
     // * the master toggle's item list stays the five essentials — GHOST-07 is
     // * a standalone config outside ghostToggleItems, like Android's
@@ -91,7 +96,9 @@ describe('the Ghost Mode decisions (NekoConfig ghost block)', () => {
       sendOnlinePackets: false,
       sendUploadProgress: false,
       sendOfflinePacketAfterOnline: true,
-      markReadAfterSend: true
+      markReadAfterSend: true,
+      silentMessageByDefault: false,
+      ghostScheduledSend: false
     };
     expect(isGhostModeActive(ghost)).toBe(true);
 
@@ -132,7 +139,9 @@ describe('the Ghost Mode decisions (NekoConfig ghost block)', () => {
       sendOnlinePackets: false,
       sendUploadProgress: false,
       sendOfflinePacketAfterOnline: true,
-      markReadAfterSend: true
+      markReadAfterSend: true,
+      silentMessageByDefault: false,
+      ghostScheduledSend: false
     });
     expect(applyGhostMode(applyGhostMode(stock, {}, true), {}, false)).toEqual(stock);
 
@@ -150,7 +159,9 @@ describe('the Ghost Mode decisions (NekoConfig ghost block)', () => {
       sendOnlinePackets: false,
       sendUploadProgress: false,
       sendOfflinePacketAfterOnline: true,
-      markReadAfterSend: true
+      markReadAfterSend: true,
+      silentMessageByDefault: false,
+      ghostScheduledSend: false
     };
     expect(applyGhostMode(locked, {sendOfflinePacketAfterOnline: true}, false)).toEqual({
       sendReadMessagePackets: true,
@@ -158,7 +169,9 @@ describe('the Ghost Mode decisions (NekoConfig ghost block)', () => {
       sendOnlinePackets: true,
       sendUploadProgress: true,
       sendOfflinePacketAfterOnline: true,
-      markReadAfterSend: true
+      markReadAfterSend: true,
+      silentMessageByDefault: false,
+      ghostScheduledSend: false
     });
   });
 
@@ -256,6 +269,36 @@ describe('the Ghost Mode decisions (NekoConfig ghost block)', () => {
       }
     }
   });
+
+  it('silent-by-default fills an absent choice and passes an explicit one (GHOST-08, packet 087)', () => {
+    // * Android passes `!getSilentMessageByDefault()` as `notify` at every
+    // * send call site: no explicit choice means the flag's value
+    expect(ghostSilentByDefault(undefined, GHOST_FLAG_DEFAULTS)).toBeUndefined();
+    expect(ghostSilentByDefault(true, GHOST_FLAG_DEFAULTS)).toBe(true);
+    expect(ghostSilentByDefault(false, GHOST_FLAG_DEFAULTS)).toBe(false);
+
+    const on = {...GHOST_FLAG_DEFAULTS, silentMessageByDefault: true};
+    expect(ghostSilentByDefault(undefined, on)).toBe(true);
+    // * the send menu's "Send with Sound" is the explicit escape — it wins
+    expect(ghostSilentByDefault(false, on)).toBe(false);
+    expect(ghostSilentByDefault(true, on)).toBe(true);
+  });
+
+  it('the ghost-scheduled re-route needs the flag, the suppression and an unexcluded payload (GHOST-09, packet 087)', () => {
+    // * Android's trick runs only while online packets are suppressed —
+    // * with them flowing there is nothing to hide
+    expect(ghostScheduledSendApplies(GHOST_FLAG_DEFAULTS, false)).toBe(false);
+
+    const on = {...GHOST_FLAG_DEFAULTS, ghostScheduledSend: true, sendOnlinePackets: false};
+    expect(ghostScheduledSendApplies(on, false)).toBe(true);
+    // * Android's payload exclusions that exist on the web: paid media
+    // * (stars). retry/story/invoice/game/quick replies have no surface here
+    // * or return earlier
+    expect(ghostScheduledSendApplies(on, true)).toBe(false);
+
+    // * Android `SendMessagesHelper`: `scheduleDate = getCurrentTime() + 12`
+    expect(GHOST_SCHEDULED_SEND_DELAY_SECONDS).toBe(12);
+  });
 });
 
 describe('the store pushes the flags into the worker', () => {
@@ -282,7 +325,9 @@ describe('the store pushes the flags into the worker', () => {
       sendOnlinePackets: false,
       sendUploadProgress: true,
       sendOfflinePacketAfterOnline: false,
-      markReadAfterSend: true
+      markReadAfterSend: true,
+      silentMessageByDefault: false,
+      ghostScheduledSend: false
     });
   });
 
@@ -557,5 +602,100 @@ describe('the manager gates (source contracts)', () => {
     const langSource = read('src/lang.ts');
     expect(langSource).toContain(`'Exterayond.Ghost': 'Ghost essentials'`);
     expect(langSource).toContain(`'Exterayond.Ghost.Title': 'Ghost Mode'`);
+  });
+
+  it('every send invoke\'s silent field goes through the GHOST-08 decision (packet 087)', () => {
+    // * Android passes `!getSilentMessageByDefault()` as `notify` at every
+    // * send call site; the web has seven invoke sites that carry (or may
+    // * carry) the `silent` field — sendText's two branches, sendFile,
+    // * sendGrouped, sendOther's two branches, forwardMessages. A new send
+    // * invoke with a silent field must wrap it consciously and bump the pin
+    const wraps = messagesSource.match(/silent: this\.exteraGhostSilentFlag\(options\.silent\)/g) ?? [];
+    expect(wraps.length).toBe(7);
+
+    // * the send-menu escape: the composer records the press's explicit
+    // * direction, the menu item flips its title/icon while the flag is on
+    const menuSource = read('src/components/chat/sendContextMenu.ts');
+    expect(menuSource).toContain('exterayondSettings.silentMessageByDefault');
+    expect(menuSource).toContain(`'Chat.Send.WithSound'`);
+    expect(menuSource).toContain(`'Chat.Send.WithoutSound'`);
+    const inputSource = read('src/components/chat/input.ts');
+    expect(inputSource).toContain('this.sendSilent = !exterayondSettings.silentMessageByDefault');
+  });
+
+  it('the ghost-scheduled re-route decides at every send entry and guards the date (GHOST-09, packet 087)', () => {
+    // * Android's `shouldSendAsGhostScheduled` consult sits at the send
+    // * functions: sendText, sendFile, sendGrouped, sendOther,
+    // * forwardMessages — plus sendText's ephemeral re-entry, which is
+    // * excluded — and the apply helper the poll composer's send delegates
+    // * through (its entry lives in appPollsManager, pinned separately). An
+    // * explicitly scheduled send (truthy date) keeps its date
+    const decisions = messagesSource.match(/options\.scheduleDate \?\?= this\.exteraGhostScheduledDate\(peerId, options/g) ?? [];
+    expect(decisions.length).toBe(6);
+    expect(messagesSource).toContain('this.exteraGhostScheduledDate(peerId, options, !!activeEphemeralContext)');
+
+    // * the helper's own body: the date guard, the payload exclusion, the
+    // * peer checks (self, bots) and Android's +12
+    const helper = messagesSource.slice(
+      messagesSource.indexOf('private exteraGhostScheduledDate'),
+      messagesSource.indexOf('private exteraGhostReadAfterSend')
+    );
+    expect(helper).not.toBe('');
+    expect(helper).toContain('if(options.scheduleDate || excluded)');
+    expect(helper).toContain('ghostScheduledSendApplies(getExterayondGhostFlags(), !!options.stars)');
+    expect(helper).toContain('peerId === this.appPeersManager.peerId || this.appPeersManager.isBot(peerId)');
+    expect(helper).toContain('getServerTime() + GHOST_SCHEDULED_SEND_DELAY_SECONDS');
+  });
+
+  it('the poll composer\'s send passes through the ghost pipeline (the outside-send contract, packet 088 polish)', () => {
+    // * the poll send lives in another manager and used to bypass the hook,
+    // * the silent flag and the scheduled-date decision entirely — the
+    // * parameters apply before the local message is generated, the invoke
+    // * goes through the hook, and the silent flag reaches it via
+    // * `params.silent` (the apply writes it back)
+    const pollsSource = read('src/lib/appManagers/appPollsManager.ts');
+    expect(pollsSource).toContain('this.appMessagesManager.exteraGhostApplySendParams(peerId, params, !!params.confirmedPaymentResult?.starsAmount)');
+    expect(pollsSource.indexOf('exteraGhostApplySendParams')).toBeLessThan(pollsSource.indexOf('generateOutgoingMessage'));
+    expect(pollsSource).toContain('this.appMessagesManager.exteraGhostSendHook(\'messages.sendMedia\', peerId, this.apiManager.invokeApi(\'messages.sendMedia\', {');
+  });
+
+  it('the burger item and the topbar indicator ride the store (GHOST-10/11, packet 087)', () => {
+    // * GHOST-10: the item shows while showGhostInDrawer is on, opens the hub
+    // * tab, and its label follows the live ghost state on every open
+    const sidebarSource = read('src/components/sidebarLeft/index.ts');
+    expect(sidebarSource).toContain('id: \'extera-ghost\'');
+    expect(sidebarSource).toContain('iconElement: createGhostIcon()');
+    expect(sidebarSource).toContain('verify: () => !!exterayondSettings.showGhostInDrawer');
+    expect(sidebarSource).toContain('isExterayondGhostModeActive() ? \'Exterayond.Ghost.Disable\' : \'Exterayond.Ghost.Enable\'');
+
+    // * GHOST-11: the topbar repaints the indicator on the ghost event and
+    // * reads the active check plus the indicator toggle
+    const topbarSource = read('src/components/chat/topbar.ts');
+    expect(topbarSource).toContain('(\'exterayond_ghost_mode_changed\'');
+    expect(topbarSource).toContain('return isExterayondGhostModeActive() && !!exterayondSettings.showGhostModeStatus;');
+
+    // * the pictogram is Android's ayu_ghost vector ported verbatim
+    const iconSource = read('src/components/exterayondGhostIcon.ts');
+    expect(iconSource).toContain('M12 1.25C6.042 1.25 1.25 6.219 1.25 12.301V19.723');
+  });
+
+  it('the store announces the ghost state to the tab-side indicator (GHOST-11, packet 087)', () => {
+    // * the essentials, their locks and the indicator toggle announce; a
+    // * reset that moved any of them announces once with key 'reset'
+    expect(storeSource).toContain('(GHOST_INDICATOR_KEYS as readonly ExterayondSettingsKey[]).includes(key) && previous !== clamped');
+    expect(storeSource).toContain('rootScope.dispatchEventSingle(\'exterayond_ghost_mode_changed\', {key: \'reset\', value: false})');
+    const langSource = read('src/lang.ts');
+    for(const key of [
+      'Exterayond.Ghost.Silent',
+      'Exterayond.Ghost.Silent.Notice',
+      'Exterayond.Ghost.Scheduled',
+      'Exterayond.Ghost.Scheduled.Notice',
+      'Exterayond.Ghost.InDrawer',
+      'Exterayond.Ghost.Indicator',
+      'Exterayond.Ghost.Enable',
+      'Exterayond.Ghost.Disable'
+    ]) {
+      expect(langSource).toContain(`'${key}':`);
+    }
   });
 });

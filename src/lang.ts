@@ -4494,6 +4494,9 @@ const lang = {
   // 'Chat.TopicBadge': 'topic creator',
   'ChatTitle.ReportMessages': 'Report Messages',
   'Chat.Send.WithoutSound': 'Send Without Sound',
+  // * Android's SendWithSound — GHOST-08's explicit escape item text while
+  // * `silentMessageByDefault` is on
+  'Chat.Send.WithSound': 'Send with Sound',
   'Chat.Send.SetReminder': 'Set a Reminder',
   'Chat.Send.ScheduledMessage': 'Schedule Message',
   'Chat.Send.WithCaption': 'Send GIF with caption',
@@ -6432,6 +6435,19 @@ const lang = {
   'Exterayond.Ghost.OfflineAfter': 'Go Offline Automatically',
   'Exterayond.Ghost.ReadOnInteract': 'Read on Interact',
   'Exterayond.Ghost.ReadOnInteract.Notice': 'Automatically reads message when you send a new one, tap a reaction or vote in a poll.',
+  // * GhostModeActivity's rows after "Read on Interact" — the Android strings
+  // * verbatim (SilentMessageByDefault / SendWithoutSoundRowNotice /
+  // * GhostScheduledSend / GhostScheduledSendNotice / GhostModeInDrawer /
+  // * GhostModeStatusIndicator) plus the drawer item's title pair
+  // * (EnableGhostMode / DisableGhostMode)
+  'Exterayond.Ghost.Silent': 'Send without Sound',
+  'Exterayond.Ghost.Silent.Notice': 'Automatically sends outgoing messages without sound.',
+  'Exterayond.Ghost.Scheduled': 'Send as scheduled',
+  'Exterayond.Ghost.Scheduled.Notice': 'While your online status is hidden, messages are sent as scheduled ones 12 seconds later, so you don\'t appear online.',
+  'Exterayond.Ghost.InDrawer': 'Shortcuts',
+  'Exterayond.Ghost.Indicator': 'Ghost Mode Indicator',
+  'Exterayond.Ghost.Enable': 'Enable Ghost',
+  'Exterayond.Ghost.Disable': 'Disable Ghost',
   'Exterayond.Ghost.Enabled': 'Ghost mode turned on',
   'Exterayond.Ghost.Disabled': 'Ghost mode turned off',
   'Exterayond.Ghost.LockOption': 'Lock this option when Ghost Mode toggles',

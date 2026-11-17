@@ -13,6 +13,7 @@ import type {ButtonMenuDirection} from '@components/buttonMenuToggle';
 import {getOverlayRoot} from '@helpers/appWindow';
 import {positionMenuTrigger} from '@helpers/positionMenu';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {exterayondSettings} from '@stores/exterayondSettings';
 
 /**
  * A send button's menu lives in the overlay root like every other menu, placed against the button:
@@ -50,6 +51,20 @@ export default class SendMenu {
   }) {
     this.middlewareHelper = options.middleware.create();
     this.createMenu();
+
+    // * GHOST-08: the menu builds its silent item at construction and again
+    // * on every close — but the first open after a settings change would
+    // * still show (and send) the stale direction, so the change itself
+    // * rebuilds. The owner's middleware drops the listener with the chat.
+    const onSettingsUpdated = ({key}: {key: string}) => {
+      if(key === 'silentMessageByDefault') {
+        this.createMenu();
+      }
+    };
+    rootScope.addEventListener('exterayond_settings_updated', onSettingsUpdated);
+    options.middleware.onClean(() => {
+      rootScope.removeEventListener('exterayond_settings_updated', onSettingsUpdated);
+    });
   }
 
   public setPeerParams(params: {peerId: PeerId, isPaid: boolean}) {
@@ -58,9 +73,15 @@ export default class SendMenu {
   }
 
   private createButtons(): ButtonMenuItemOptionsVerifiable[] {
+    // * GHOST-08: with `silentMessageByDefault` on, ordinary sends go without
+    // * sound, so the menu item is the explicit escape in the opposite
+    // * direction (Android's send popup: "Send with Sound", notify icon on).
+    // * The item re-reads the store on construction, on every close-triggered
+    // * rebuild and on the setting change itself (see the constructor).
+    const silentByDefault = !!exterayondSettings.silentMessageByDefault;
     return [{
-      icon: 'mute',
-      text: 'Chat.Send.WithoutSound',
+      icon: silentByDefault ? 'unmute' : 'mute',
+      text: silentByDefault ? 'Chat.Send.WithSound' : 'Chat.Send.WithoutSound',
       onClick: this.options.onSilentClick,
       verify: () => this.type === 'schedule'
     }, {

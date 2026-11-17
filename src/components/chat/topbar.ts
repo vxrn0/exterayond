@@ -9,7 +9,8 @@ import ButtonMenuToggle from '@components/buttonMenuToggle';
 import createChatPinnedMessage, {ChatPinnedMessageController} from '@components/chat/pinnedMessage';
 import getPinnedMessagesKey from '@appManagers/utils/messages/getPinnedMessagesKey';
 import ListenerSetter from '@helpers/listenerSetter';
-import {exterayondSettings} from '@stores/exterayondSettings';
+import {exterayondSettings, isExterayondGhostModeActive} from '@stores/exterayondSettings';
+import {createGhostIcon} from '@components/exterayondGhostIcon';
 import showDeleteDialogPopup from '@components/popups/deleteDialog';
 import {showPeerReport} from '@components/popups/reportAd';
 import appNavigationController from '@components/appNavigationController';
@@ -87,6 +88,8 @@ export default class ChatTopbar {
   private avatar: ReturnType<typeof avatarNew>;
   private avatarMiddlewareHelper: MiddlewareHelper;
   private title: HTMLDivElement;
+  /** GHOST-11: the ghost pictogram beside the title while Ghost Mode is active and its indicator is enabled */
+  private ghostIndicator: HTMLElement;
   private subtitle: HTMLDivElement;
   private chatUtils: HTMLDivElement;
   private btnCall: HTMLButtonElement;
@@ -161,6 +164,22 @@ export default class ChatTopbar {
 
     this.title = document.createElement('div');
     this.title.classList.add('user-title');
+
+    // * GHOST-11: the ghost indicator rides the title's right (Android's
+    // * title status drawable, DialogsActivity.updateStatus); re-shown by the
+    // * ghost state event, initially hidden
+    this.ghostIndicator = createGhostIcon('extera-ghost-indicator');
+    this.ghostIndicator.classList.add('hide');
+
+    this.listenerSetter.add(rootScope)('exterayond_ghost_mode_changed', () => {
+      const visible = this.ghostIndicatorVisible();
+      this.ghostIndicator.classList.toggle('hide', !visible);
+      // * the title's repaint also mounts it, but the event may fire while no
+      // * repaint comes (the toggle row, an essential, a reset) — mount now
+      if(visible && !this.ghostIndicator.isConnected) {
+        this.title.append(this.ghostIndicator);
+      }
+    });
 
     top.append(this.title);
 
@@ -1560,6 +1579,11 @@ export default class ChatTopbar {
       }
 
       replaceContent(this.title, titleEl);
+      // * GHOST-11: the indicator lives inside the title (every title update
+      // * repaints it, the append just re-positions)
+      if(this.ghostIndicatorVisible()) {
+        this.title.append(this.ghostIndicator);
+      }
       // if(icons) {
       //   this.title.append(...icons);
       // }
@@ -1568,6 +1592,15 @@ export default class ChatTopbar {
 
   public setTitle(count?: number) {
     this.setTitleManual(count).then((setTitleCallback) => setTitleCallback());
+  }
+
+  /**
+   * GHOST-11: Android's surface is the main screen's title (`DialogsActivity`
+   * shows the ghost drawable while `isGhostModeActive()` &&
+   * `showGhostModeStatus`); the web's title element is the chat topbar's.
+   */
+  private ghostIndicatorVisible(): boolean {
+    return isExterayondGhostModeActive() && !!exterayondSettings.showGhostModeStatus;
   }
 
   public setFloating = () => {

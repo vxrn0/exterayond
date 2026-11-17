@@ -163,6 +163,13 @@ export type BroadcastEvents = {
   /** exteraless Preferences changed (`@stores/exterayondSettings`); imperative count owners re-read the store */
   'exterayond_settings_updated': {key: string, value: boolean | number | string},
   /**
+   * The Ghost Mode state moved (`@stores/exterayondSettings`, GHOST-11): a
+   * flag, a lock or the indicator toggle changed (or the preferences were
+   * reset — `key: 'reset'`). The topbar's ghost indicator re-reads the
+   * active check on it.
+   */
+  'exterayond_ghost_mode_changed': {key: string, value: boolean | number | string},
+  /**
    * The wallpaper's dominant color landed (`@helpers/wallpaperTint`, G-4):
    * `hex` is the image wallpaper's dominant chromatic color, or undefined for
    * a record that carries no image; `key` is the wallpaper record id. The

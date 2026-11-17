@@ -4,7 +4,9 @@
  * essentials, their locks, `isGhostModeActive`/`setGhostMode`) and
  * `AyuGhostUtils.interceptRequest` (which request kinds each flag withholds
  * or rewrites), plus the send-pipeline consumers of that same interceptor
- * (`handleReadAfterSend` / `handleOfflineAfterSend` — GHOST-07/GHOST-06).
+ * (`handleReadAfterSend` / `handleOfflineAfterSend` — GHOST-07/GHOST-06) and
+ * the two send-parameter keys the ghost screen hosts from `NaConfig`
+ * (`silentMessageByDefault` / `ghostScheduledSend` — GHOST-08/09).
  * Client-side suppression only: the client withholds or rewrites its own
  * outgoing read-receipt / typing / status / story packets, exactly as the
  * Android client does at the same call level — nothing here claims to unsend
@@ -47,17 +49,37 @@ export type ExterayondGhostFlags = {
    * `ghostToggleItems`; it rides the worker push because the send hook reads
    * it worker-side.
    */
-  markReadAfterSend: boolean
+  markReadAfterSend: boolean,
+  /**
+   * Android `NaConfig.silentMessageByDefault` ("SilentMessageByDefault",
+   * default false) — GHOST-08: outgoing messages send without sound unless
+   * the send was explicit about it (Android passes `!silentMessageByDefault`
+   * as `notify` at every send call site; the flipped send-menu item is the
+   * explicit escape). A standalone Na key hosted by GhostModeActivity that
+   * rides the worker push because the send invokes read it worker-side.
+   */
+  silentMessageByDefault: boolean,
+  /**
+   * Android `NaConfig.ghostScheduledSend` ("GhostScheduledSend", default
+   * false) — GHOST-09: while online packets are suppressed, ordinary sends
+   * are re-routed through the scheduled-send primitive 12 seconds ahead (the
+   * server delivers them later without the sender-online side effect).
+   * Another standalone Na key hosted by GhostModeActivity, worker-side for
+   * the same reason.
+   */
+  ghostScheduledSend: boolean
 };
 
-/** Android `NekoConfig` ghost-block defaults: every packet sends (stock behavior). */
+/** Android `NekoConfig`/`NaConfig` ghost-screen defaults: every packet sends (stock behavior). */
 export const GHOST_FLAG_DEFAULTS: ExterayondGhostFlags = {
   sendReadMessagePackets: true,
   sendReadStoriesPackets: true,
   sendOnlinePackets: true,
   sendUploadProgress: true,
   sendOfflinePacketAfterOnline: false,
-  markReadAfterSend: true
+  markReadAfterSend: true,
+  silentMessageByDefault: false,
+  ghostScheduledSend: false
 };
 
 /** The master-toggle keys, `NekoConfig.ghostToggleItems`' order. */
@@ -205,6 +227,32 @@ export const ghostOfflineAfterSendApplies = (method: ExterayondGhostSendMethod, 
  */
 export const ghostReadAfterSendApplies = (method: ExterayondGhostSendMethod, flags: ExterayondGhostFlags): boolean =>
   flags.markReadAfterSend && !flags.sendReadMessagePackets && GHOST_MESSAGE_SEND_METHODS.includes(method);
+
+/**
+ * GHOST-08: `NaConfig.silentMessageByDefault` decides the outgoing `notify`
+ * parameter at every Android send call site (`!getSilentMessageByDefault()
+ * .Bool()`): no explicit choice means the flag's value, an explicit one
+ * wins. `explicit === undefined` is the composer's "this press chose
+ * nothing" — with the flag off it passes through untouched, so the stock
+ * invoke is byte-for-byte the same.
+ */
+export const ghostSilentByDefault = (explicit: boolean | undefined, flags: ExterayondGhostFlags): boolean | undefined =>
+  flags.silentMessageByDefault ? explicit ?? true : explicit;
+
+/**
+ * GHOST-09: Android `SendMessagesHelper.shouldSendAsGhostScheduled`'s config
+ * condition and the payload exclusions that have a web surface. The trick
+ * needs ghost-scheduled send on AND online packets suppressed — with online
+ * packets flowing there is nothing to hide. The other Android exclusions
+ * (`retryMessageObject`, `sendingStory`, `invoice`, `game`, quick replies)
+ * have no web surface at these send functions or return earlier; the peer
+ * checks (self, bots) live in the manager.
+ */
+export const ghostScheduledSendApplies = (flags: ExterayondGhostFlags, payloadExcluded: boolean): boolean =>
+  flags.ghostScheduledSend && !flags.sendOnlinePackets && !payloadExcluded;
+
+/** Android `SendMessagesHelper`: `scheduleDate = getCurrentTime() + 12`. */
+export const GHOST_SCHEDULED_SEND_DELAY_SECONDS = 12;
 
 /** Android `AyuGhostUtils.OFFLINE_DELAY_MS`. */
 export const GHOST_OFFLINE_AFTER_SEND_DELAY = 1000;

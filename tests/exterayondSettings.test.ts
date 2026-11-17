@@ -183,6 +183,10 @@ describe('exterayond settings store', () => {
       sendUploadProgressLocked: false,
       sendOfflinePacketAfterOnlineLocked: false,
       markReadAfterSend: true,
+      silentMessageByDefault: false,
+      ghostScheduledSend: false,
+      showGhostInDrawer: false,
+      showGhostModeStatus: false,
       translatorMode: 0
     });
     expect(OE_AVATAR_CORNERS_MAX).toBe(28);
@@ -541,6 +545,54 @@ describe('exterayond settings store', () => {
     // * Android's load-time fallback-to-off lives in clampTranslatorMode
     expect(clampExterayondSetting('translatorMode', 3)).toBe(2);
     expect(clampExterayondSetting('translatorMode', -1)).toBe(0);
+  });
+
+  test('the 087 ghost keys: the send parameters ride the worker push, the UI keys ride the ghost event (packet 087)', async() => {
+    const {setExterayondSetting, resetExterayondSettings} = await loadStore();
+    const rootScope = (await import('@lib/rootScope')).default;
+    const payloads: any[] = [];
+    const originalManagers = rootScope.managers;
+    rootScope.managers = {
+      appMessagesManager: {setExterayondGhostFlags: (flags: any) => payloads.push(flags)}
+    } as any;
+    const ghostEvents: string[] = [];
+    const listener = ({key}: {key: string}) => ghostEvents.push(key);
+    rootScope.addEventListener('exterayond_ghost_mode_changed', listener);
+
+    // * GHOST-08/09: the send invokes read them worker-side — a change pushes
+    setExterayondSetting('silentMessageByDefault', true);
+    expect(payloads[payloads.length - 1].silentMessageByDefault).toBe(true);
+    setExterayondSetting('ghostScheduledSend', true);
+    expect(payloads[payloads.length - 1].ghostScheduledSend).toBe(true);
+    // * the UI keys never push (no worker consumer)
+    const pushed = payloads.length;
+    setExterayondSetting('showGhostInDrawer', true);
+    expect(payloads.length).toBe(pushed);
+
+    // * GHOST-10/11: the drawer item and the indicator are tab-side, the
+    // * indicator follows them through the ghost event
+    const before = ghostEvents.length;
+    setExterayondSetting('showGhostInDrawer', true); // * unchanged now: no event
+    setExterayondSetting('showGhostModeStatus', true);
+    expect(ghostEvents.slice(before)).toEqual(['showGhostModeStatus']);
+
+    // * a lock announces too (a locked flag leaves the active check)
+    setExterayondSetting('sendUploadProgressLocked', true);
+    expect(ghostEvents).toContain('sendUploadProgressLocked');
+
+    // * an unchanged key announces nothing
+    const beforeUnchanged = ghostEvents.length;
+    setExterayondSetting('showGhostModeStatus', true);
+    expect(ghostEvents.length).toBe(beforeUnchanged);
+
+    // * a reset that moved indicator-relevant keys announces once, with 'reset'
+    setExterayondSetting('showGhostModeStatus', false);
+    ghostEvents.length = 0;
+    resetExterayondSettings();
+    expect(ghostEvents).toEqual(['reset']);
+
+    rootScope.removeEventListener('exterayond_ghost_mode_changed', listener);
+    rootScope.managers = originalManagers;
   });
 
   test('reset restores defaults and clears only the exterayond preferences record', async() => {

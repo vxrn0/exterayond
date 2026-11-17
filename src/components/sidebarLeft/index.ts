@@ -17,6 +17,8 @@ import {AppDataAndStorageTab, AppNewChannelTab} from '@components/solidJsTabs/ta
 import {AppContactsTab} from '@components/solidJsTabs/tabs';
 import {AppCallsTab} from '@components/solidJsTabs/tabs';
 import {AppArchivedTab} from '@components/solidJsTabs/tabs';
+import {AppExterayondOtherTab} from '@components/solidJsTabs/tabs';
+import {createGhostIcon} from '@components/exterayondGhostIcon';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import I18n, {i18n} from '@lib/langPack';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
@@ -99,7 +101,7 @@ import {toastNew} from '@components/toast';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import createLockButton from '@components/sidebarLeft/lockButton';
 import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenuTrigger';
-import {exterayondSettings} from '@stores/exterayondSettings';
+import {exterayondSettings, isExterayondGhostModeActive} from '@stores/exterayondSettings';
 import ChatTypeMenu from '@components/chatTypeMenu';
 import {RequestHistoryOptions} from '@appManagers/appMessagesManager';
 import EmptySearchPlaceholder from '@components/emptySearchPlaceholder';
@@ -806,6 +808,24 @@ export class AppSidebarLeft extends SidebarSlider {
       },
       verify: () => IS_CALL_SUPPORTED || IS_CONFERENCE_CALL_SUPPORTED
     }, {
+      // * GHOST-10 (packet 087): Android's drawer item (DialogsActivity) —
+      // * shown while `showGhostInDrawer` is on, sitting fixed right before
+      // * the Settings group, titled by the current ghost state. The click
+      // * opens GhostModeActivity's analog (the hub's Other tab); Android's
+      // * long-press toggle has no menu-item analog, the toggle lives in the
+      // * tab this opens. With a customized menu layout (FOLD-13) the fixed
+      // * spot yields: the item rides the block of web-only composites above
+      // * the laid-out items (see applyMainMenuLayoutToButtons).
+      iconElement: createGhostIcon(),
+      id: 'extera-ghost',
+      text: 'Exterayond.Ghost.Enable',
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppExterayondOtherTab).open();
+        });
+      },
+      verify: () => !!exterayondSettings.showGhostInDrawer
+    }, {
       oeMenuId: MainMenuIds.SETTINGS,
       id: 'settings',
       icon: 'settings',
@@ -827,6 +847,13 @@ export class AppSidebarLeft extends SidebarSlider {
       buttonOptions: {ariaLabel: 'MultiAccount.More'},
       positionPadding,
       onOpenBefore: async() => {
+        // * GHOST-10: the ghost item's label follows the live ghost state —
+        // * ButtonMenu rebuilds its elements from these objects on every open
+        const ghostMenuButton = filteredButtonsSliced.find((button) => button.id === 'extera-ghost');
+        if(ghostMenuButton) {
+          ghostMenuButton.text = isExterayondGhostModeActive() ? 'Exterayond.Ghost.Disable' : 'Exterayond.Ghost.Enable';
+        }
+
         const managers = bindManagersToSession(this.managers);
         const emptyAttachMenuBots: AttachMenuBot[] = [];
         const attachMenuBots = await Promise.race([

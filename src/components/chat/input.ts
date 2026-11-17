@@ -480,7 +480,8 @@ export default class ChatInput {
   private noWebPage: true;
   public scheduleDate: number;
   public scheduleRepeatPeriod: number;
-  public sendSilent: true;
+  /** `undefined` = this press chose nothing; with GHOST-08's flag on the manager fills it (see `exteraGhostSilentFlag`) */
+  public sendSilent: boolean | undefined;
   public startParam: string;
   public invertMedia: boolean;
   public effect: Accessor<DocId>;
@@ -1652,7 +1653,10 @@ export default class ChatInput {
 
     this.sendMenu = new SendMenu({
       onSilentClick: () => {
-        this.sendSilent = true;
+        // * GHOST-08: with `silentMessageByDefault` on the item reads
+        // * "Send with Sound" and this press explicitly sends with sound —
+        // * the manager passes an explicit `false` through untouched
+        this.sendSilent = !exterayondSettings.silentMessageByDefault;
         if(this.recording) this.recordingController.finishRecordingFromMenu();
         else this.sendMessage();
       },

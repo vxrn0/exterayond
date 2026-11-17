@@ -558,7 +558,7 @@ describe('the Ghost Mode section of the Other tab (packets 081–082, 084)', () 
     document.body.replaceChildren();
   });
 
-  it('renders the master toggle, the five essentials and GHOST-07 in Android\'s order and titles', () => {
+  it('renders the master toggle, the five essentials, GHOST-07 and the 087 rows in Android\'s order and titles', () => {
     const titles = ghostRows().map((row) => row.querySelector('.row-title')?.childNodes[0]?.textContent);
     expect(titles).toEqual([
       'Exterayond.Ghost.Title',
@@ -567,7 +567,11 @@ describe('the Ghost Mode section of the Other tab (packets 081–082, 084)', () 
       'Exterayond.Ghost.NoOnline',
       'Exterayond.Ghost.NoTyping',
       'Exterayond.Ghost.OfflineAfter',
-      'Exterayond.Ghost.ReadOnInteract'
+      'Exterayond.Ghost.ReadOnInteract',
+      'Exterayond.Ghost.Silent',
+      'Exterayond.Ghost.Scheduled',
+      'Exterayond.Ghost.InDrawer',
+      'Exterayond.Ghost.Indicator'
     ]);
     // * Android's "%d/5" counter at the stock defaults
     expect(ghostSubtitle()).toBe('0/5');
@@ -631,6 +635,35 @@ describe('the Ghost Mode section of the Other tab (packets 081–082, 084)', () 
     // * the master toggle moves only the essentials
     ghostCheckbox(0).click();
     expect(settings.markReadAfterSend).toBe(false);
+    expect(settings.sendReadMessagePackets).toBe(false);
+    expect(ghostSubtitle()).toBe('5/5');
+  });
+
+  it('the 087 rows round-trip their plain values and stay outside the master toggle (GHOST-08..11, packet 087)', () => {
+    const [settings] = useExterayondSettings();
+
+    // * Android's defaults are all off; the checkboxes show the plain value
+    for(const index of [7, 8, 9, 10]) {
+      expect(ghostCheckbox(index).checked, `row ${index}`).toBe(false);
+      expect(ghostCheckbox(index).disabled, `row ${index}`).toBe(false);
+    }
+
+    // * each row stores its own key
+    ghostCheckbox(7).click();
+    ghostCheckbox(8).click();
+    ghostCheckbox(9).click();
+    ghostCheckbox(10).click();
+    expect(settings.silentMessageByDefault).toBe(true);
+    expect(settings.ghostScheduledSend).toBe(true);
+    expect(settings.showGhostInDrawer).toBe(true);
+    expect(settings.showGhostModeStatus).toBe(true);
+
+    // * none of them participates in the master toggle or the "%d/5" count
+    ghostCheckbox(0).click();
+    expect(settings.silentMessageByDefault).toBe(true);
+    expect(settings.ghostScheduledSend).toBe(true);
+    expect(settings.showGhostInDrawer).toBe(true);
+    expect(settings.showGhostModeStatus).toBe(true);
     expect(settings.sendReadMessagePackets).toBe(false);
     expect(ghostSubtitle()).toBe('5/5');
   });

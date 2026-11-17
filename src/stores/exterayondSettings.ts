@@ -349,7 +349,10 @@ export const OE_DEFAULTS = {
    * send the quick reaction): the CHAT-10 double-tap action by direction.
    * The enum is `xyz.nextalone.nagram.helper.DoubleTap`'s (0..12); the values
    * the web cannot back with a real handler resolve to a no-op, never faked.
-   * Android EtgBackup exports neither key, so no backup alias was invented.
+   * Android EtgBackup DOES export both under its exteraGram remap tables
+   * (`doubleTapAction`, `doubleTapActionOutOwner`); the web's backup keeps
+   * them reported as unsupported until those tables are ported — never
+   * applied half-mapped.
    */
   DoubleTapAction: 1,
   DoubleTapActionOut: 1,
@@ -420,15 +423,13 @@ export const OE_DEFAULTS = {
    */
   bubbleRadius: 17,
   /**
-   * Ghost Mode (packets 081–082): Android `NekoConfig`'s ghost block, the
-   * five "essentials" and their long-press locks (GHOST-01..06, GHOST-12),
-   * the names and defaults verbatim. Client-side suppression only: see
-   * `src/lib/exterayondGhost.ts` for the contract. Android `EtgBackup`
-   * exports none of the ghost keys (verified against EtgBackup.java), so no
-   * backup alias exists. The locks are master-toggle bookkeeping (GHOST-12);
-   * `silentMessageByDefault` (GHOST-08), `ghostScheduledSend` (GHOST-09),
-   * the drawer item (GHOST-10) and the status indicator (GHOST-11) wait on
-   * their web surfaces and are unstored.
+   * Ghost Mode (packets 081–082, 087): Android `NekoConfig`'s ghost block,
+   * the five "essentials" and their long-press locks (GHOST-01..06,
+   * GHOST-12), the names and defaults verbatim. Client-side suppression
+   * only: see `src/lib/exterayondGhost.ts` for the contract. Android
+   * `EtgBackup` exports none of the ghost keys (verified against
+   * EtgBackup.java), so no backup alias exists. The locks are master-toggle
+   * bookkeeping (GHOST-12).
    */
   sendReadMessagePackets: true,
   sendReadStoriesPackets: true,
@@ -448,6 +449,36 @@ export const OE_DEFAULTS = {
    * hook reads it (`src/lib/exterayondGhost.ts`).
    */
   markReadAfterSend: true,
+  /**
+   * Android `NaConfig.silentMessageByDefault` ("SilentMessageByDefault",
+   * default false) — GHOST-08 (packet 087): outgoing messages send without
+   * sound unless the send was explicit about it. The send invokes read it
+   * worker-side (`ghostSilentByDefault`), so it rides the ghost-flags push;
+   * the send menu's item flips to "Send with Sound" while it is on.
+   */
+  silentMessageByDefault: false,
+  /**
+   * Android `NaConfig.ghostScheduledSend` ("GhostScheduledSend", default
+   * false) — GHOST-09 (packet 087): while online packets are suppressed,
+   * ordinary sends are re-routed through the scheduled-send primitive 12
+   * seconds ahead (Android's `shouldSendAsGhostScheduled` trick). Worker-side
+   * for the same reason.
+   */
+  ghostScheduledSend: false,
+  /**
+   * Android `NekoConfig.showGhostInDrawer` (default false) — GHOST-10
+   * (packet 087): the burger-menu item ("Shortcuts" row on Android, the item
+   * itself titled Enable/Disable Ghost) is shown while it is on. Tab-side
+   * only — the menu re-reads it on every open.
+   */
+  showGhostInDrawer: false,
+  /**
+   * Android `NekoConfig.showGhostModeStatus` (default false) — GHOST-11
+   * (packet 087): the ghost icon beside the chat topbar title while Ghost
+   * Mode is active (Android's title status drawable). Tab-side only; the
+   * topbar re-reads it on the ghost event.
+   */
+  showGhostModeStatus: false,
   /**
    * Android `NaConfig.translatorMode` ("TranslatorMode", int 0..2, default
    * 0) — TRANS-05 (packet 085): how a manual translation relates to its
@@ -603,10 +634,16 @@ export const GHOST_FLAG_KEYS = [
 ] as const satisfies readonly ExterayondSettingsKey[];
 
 /**
- * The store keys pushed into the worker: the five essentials plus GHOST-07's
- * `markReadAfterSend` — the send-pipeline hook reads it worker-side too.
+ * The store keys pushed into the worker: the five essentials, GHOST-07's
+ * `markReadAfterSend` and GHOST-08/09's send-parameter keys — the
+ * send-pipeline hook and the send invokes read them worker-side too.
  */
-const GHOST_WORKER_KEYS = [...GHOST_FLAG_KEYS, 'markReadAfterSend'] as const satisfies readonly ExterayondSettingsKey[];
+const GHOST_WORKER_KEYS = [
+  ...GHOST_FLAG_KEYS,
+  'markReadAfterSend',
+  'silentMessageByDefault',
+  'ghostScheduledSend'
+] as const satisfies readonly ExterayondSettingsKey[];
 
 /** The store key of an essential's master-toggle lock (GHOST-12). */
 export const GHOST_LOCKED_OF: Record<typeof GHOST_FLAG_KEYS[number], ExterayondSettingsKey> = {
@@ -616,6 +653,18 @@ export const GHOST_LOCKED_OF: Record<typeof GHOST_FLAG_KEYS[number], ExterayondS
   sendUploadProgress: 'sendUploadProgressLocked',
   sendOfflinePacketAfterOnline: 'sendOfflinePacketAfterOnlineLocked'
 };
+
+/**
+ * The store keys the GHOST-11 topbar indicator follows: the essentials (the
+ * master toggle moves them), their locks (a locked flag leaves the active
+ * check) and the indicator's own toggle. `showGhostInDrawer` only drives the
+ * burger-menu item, which re-reads the store on every open.
+ */
+const GHOST_INDICATOR_KEYS = [
+  ...GHOST_FLAG_KEYS,
+  ...Object.values(GHOST_LOCKED_OF),
+  'showGhostModeStatus'
+] as const satisfies readonly ExterayondSettingsKey[];
 
 /**
  * Ghost Mode reaches the worker's managers the same way the GEN-12 flag
@@ -631,7 +680,9 @@ const pushGhostFlags = () => {
       sendOnlinePackets: exterayondSettings.sendOnlinePackets as boolean,
       sendUploadProgress: exterayondSettings.sendUploadProgress as boolean,
       sendOfflinePacketAfterOnline: exterayondSettings.sendOfflinePacketAfterOnline as boolean,
-      markReadAfterSend: exterayondSettings.markReadAfterSend as boolean
+      markReadAfterSend: exterayondSettings.markReadAfterSend as boolean,
+      silentMessageByDefault: exterayondSettings.silentMessageByDefault as boolean,
+      ghostScheduledSend: exterayondSettings.ghostScheduledSend as boolean
     });
   } catch(e) {
     // * no managers yet (tests, early import): the next auth event pushes it
@@ -661,9 +712,11 @@ const ghostModeState = () => {
     locked[key] = exterayondSettings[GHOST_LOCKED_OF[key]] as boolean;
   }
 
-  // * GHOST-07 rides the state but is no master-toggle input: the toggle
-  // * (Android's setGhostMode) never moves it
+  // * GHOST-07/08/09 ride the state but are no master-toggle inputs: the
+  // * toggle (Android's setGhostMode) never moves them
   flags.markReadAfterSend = exterayondSettings.markReadAfterSend as boolean;
+  flags.silentMessageByDefault = exterayondSettings.silentMessageByDefault as boolean;
+  flags.ghostScheduledSend = exterayondSettings.ghostScheduledSend as boolean;
 
   return {flags, locked};
 };
@@ -685,16 +738,25 @@ export const isExterayondGhostModeActive = () => {
 export const setExterayondGhostMode = (enabled: boolean) => {
   const {flags, locked} = ghostModeState();
   const next = applyGhostMode(flags, locked, enabled);
+  // * essentials already at their target (all locked, or the mode re-set)
+  // * store nothing — and Android's status request rides a real move too,
+  // * not a no-op toggle
+  let anyChanged = false;
   batch(() => {
     for(const key of GHOST_FLAG_KEYS) {
-      setExterayondSetting(key, next[key] as never);
+      if(exterayondSettings[key] !== next[key]) {
+        anyChanged = true;
+        setExterayondSetting(key, next[key] as never);
+      }
     }
   });
 
-  try {
-    void rootScope.managers?.appUsersManager.updateMyOnlineStatus(false);
-  } catch(e) {
-    // * no managers yet: the next natural status ping applies the rewrite
+  if(anyChanged) {
+    try {
+      void rootScope.managers?.appUsersManager.updateMyOnlineStatus(false);
+    } catch(e) {
+      // * no managers yet: the next natural status ping applies the rewrite
+    }
   }
 };
 
@@ -709,7 +771,7 @@ if(typeof document !== 'undefined') {
  * The settings whose consumers re-read the store from this event; no new bus,
  * no effect per row or message.
  */
-const LIVE_EVENT_KEYS: ExterayondSettingsKey[] = ['DisableNumberRounding', 'IgnoreUnreadCount', 'HideAllTab', 'OEAppearanceWallpaperPattern', 'OEAppearanceThemePalette', 'OEPillActivePills', 'OEPillHiddenPills', 'OEAppearanceMainMenuLayout'];
+const LIVE_EVENT_KEYS: ExterayondSettingsKey[] = ['DisableNumberRounding', 'IgnoreUnreadCount', 'HideAllTab', 'OEAppearanceWallpaperPattern', 'OEAppearanceThemePalette', 'OEPillActivePills', 'OEPillHiddenPills', 'OEAppearanceMainMenuLayout', 'HideStoriesFromHeader', 'silentMessageByDefault', 'OEAppearanceAttachedSidebar', 'MediaViewerMenuItemForward'];
 
 /** Sets one setting (validated) and writes the whole record back. */
 const setExterayondSetting = <K extends ExterayondSettingsKey>(key: K, value: ExterayondSettingValue<K>) => {
@@ -725,6 +787,11 @@ const setExterayondSetting = <K extends ExterayondSettingsKey>(key: K, value: Ex
   }
   if((GHOST_WORKER_KEYS as readonly ExterayondSettingsKey[]).includes(key) && previous !== clamped) {
     pushGhostFlags();
+  }
+  // * GHOST-11: the topbar indicator is vanilla DOM, so the store announces
+  // * the ghost state the way the live keys do
+  if((GHOST_INDICATOR_KEYS as readonly ExterayondSettingsKey[]).includes(key) && previous !== clamped) {
+    rootScope.dispatchEventSingle('exterayond_ghost_mode_changed', {key, value: clamped});
   }
 };
 
@@ -749,11 +816,19 @@ const resetExterayondSettings = () => {
     pushSortByUnread();
   }
 
-  for(const key of GHOST_FLAG_KEYS) {
+  // * every worker-read key re-pushes, not just the essentials: GHOST-07's
+  // * markReadAfterSend and GHOST-08/09's send parameters ride the same
+  // * payload, and a reset that moved only one of them would otherwise leave
+  // * the worker's flags stale until the next session event
+  for(const key of GHOST_WORKER_KEYS) {
     if(previous[key] !== OE_DEFAULTS[key]) {
       pushGhostFlags();
       break;
     }
+  }
+
+  if(GHOST_INDICATOR_KEYS.some((key) => previous[key] !== OE_DEFAULTS[key])) {
+    rootScope.dispatchEventSingle('exterayond_ghost_mode_changed', {key: 'reset', value: false});
   }
 };
 
@@ -1149,8 +1224,24 @@ if(typeof document !== 'undefined') {
         previousAttachedSidebar = exterayondSettings.OEAppearanceAttachedSidebar;
         classList.add('oe-sidebar-layout-animate');
         clearTimeout(sidebarAnimateTimer);
+        // * the class drops when the eased properties settle on the column
+        // * they animate (all four run --transition-standard-in, so the
+        // * first end means all of them), with the timeout as the fallback
+        // * for the no-transition paths (animations off, reduced level)
+        const column = document.getElementById('column-left');
+        const onSettled = (e: TransitionEvent) => {
+          if(e.target !== column || !['margin-block', 'margin-inline-start', 'border-radius', 'box-shadow'].includes(e.propertyName)) {
+            return;
+          }
+          column.removeEventListener('transitionend', onSettled);
+          classList.remove('oe-sidebar-layout-animate');
+        };
+        column?.addEventListener('transitionend', onSettled);
         // * --transition-standard-in is .3s at full animation level
-        sidebarAnimateTimer = setTimeout(() => classList.remove('oe-sidebar-layout-animate'), 500);
+        sidebarAnimateTimer = setTimeout(() => {
+          column?.removeEventListener('transitionend', onSettled);
+          classList.remove('oe-sidebar-layout-animate');
+        }, 500);
       }
 
       // * every property read here is what the effect tracks

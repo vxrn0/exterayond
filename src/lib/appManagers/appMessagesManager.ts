@@ -101,7 +101,7 @@ import type {ConfirmedPaymentResult} from '@components/chat/paidMessagesIntercep
 import RepayRequestHandler, {RepayRequest} from '@appManagers/utils/repayRequestHandler';
 import getPhotoInput from '@appManagers/utils/photos/getPhotoInput';
 import {increment, MonoforumDialog} from '@lib/storages/monoforumDialogs';
-import {getExterayondGhostFlags, ghostBlocksTyping, ghostOfflineAfterSendApplies, ghostReadAfterSendApplies, ghostSuppressesReadReceipts, GHOST_OFFLINE_AFTER_SEND_DELAY, setExterayondGhostFlags as storeGhostFlags} from '@lib/exterayondGhost';
+import {getExterayondGhostFlags, ghostBlocksTyping, ghostOfflineAfterSendApplies, ghostReadAfterSendApplies, ghostScheduledSendApplies, ghostSilentByDefault, ghostSuppressesReadReceipts, GHOST_OFFLINE_AFTER_SEND_DELAY, GHOST_SCHEDULED_SEND_DELAY_SECONDS, setExterayondGhostFlags as storeGhostFlags} from '@lib/exterayondGhost';
 import type {ExterayondGhostFlags, ExterayondGhostSendMethod} from '@lib/exterayondGhost';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {makeMessageMediaInputForSuggestedPost} from '@appManagers/utils/messages/makeMessageMediaInput';
@@ -3223,6 +3223,12 @@ export class AppMessagesManager extends AppManager {
       });
     }
 
+    // * GHOST-09: the ghost-scheduled re-route decides here, so the local
+    // * message is generated (and stored) as scheduled exactly like an
+    // * explicitly scheduled one; the multi-part split below re-enters with
+    // * the date already set and keeps it
+    options.scheduleDate ??= this.exteraGhostScheduledDate(peerId, options);
+
     const MAX_LENGTH = config.message_length_max;
     const splitted = richMessage ? [text] : splitStringByLength(text, MAX_LENGTH);
     text = splitted[0];
@@ -3279,6 +3285,9 @@ export class AppMessagesManager extends AppManager {
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
+          // * the stock invoke omits `silent` (undefined drops in the TL
+          // * serializer); GHOST-08 writes it like Android's call site
+          silent: this.exteraGhostSilentFlag(options.silent),
           send_as: sendAs,
           allow_paid_stars: paidStars
         }, sentRequestOptions));
@@ -3299,7 +3308,7 @@ export class AppMessagesManager extends AppManager {
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate || undefined,
           schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
-          silent: options.silent,
+          silent: this.exteraGhostSilentFlag(options.silent),
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
           invert_media: richMessage ? undefined : options.invertMedia,
@@ -3467,6 +3476,10 @@ export class AppMessagesManager extends AppManager {
         confirmedPaymentResult: undefined
       };
     }
+
+    // * GHOST-09: an ephemeral (bot command / welcome template) send never
+    // * takes the ghost-scheduled re-route
+    options.scheduleDate ??= this.exteraGhostScheduledDate(peerId, options, !!activeEphemeralContext);
 
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     if(isDocument) {
@@ -3796,7 +3809,7 @@ export class AppMessagesManager extends AppManager {
           reply_to: options.replyTo,
           schedule_date: options.scheduleDate,
           schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
-          silent: options.silent,
+          silent: this.exteraGhostSilentFlag(options.silent),
           entities: sendEntities,
           clear_draft: options.clearDraft,
           send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
@@ -4211,6 +4224,10 @@ export class AppMessagesManager extends AppManager {
       return this.sendFile({...options, ...options.sendFileDetails[0]});
     }
 
+    // * GHOST-09: decided after the ephemeral and single-file re-entries, so
+    // * the album and everything it re-enters with share one date
+    options.scheduleDate ??= this.exteraGhostScheduledDate(peerId, options);
+
     let caption = options.caption || '';
     let entities = options.entities || [];
     if(caption) {
@@ -4345,7 +4362,7 @@ export class AppMessagesManager extends AppManager {
             reply_to: options.replyTo,
             schedule_date: options.scheduleDate,
             schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
-            silent: options.silent,
+            silent: this.exteraGhostSilentFlag(options.silent),
             clear_draft: options.clearDraft,
             send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
             update_stickersets_order: options.updateStickersetOrder,
@@ -4556,6 +4573,10 @@ export class AppMessagesManager extends AppManager {
       }).then(noop);
     }
 
+    // * GHOST-09: stickers, dice, polls and the other media kinds re-route
+    // * like a text send (Android's funnel covers them the same way)
+    options.scheduleDate ??= this.exteraGhostScheduledDate(peerId, options);
+
     const message = this.generateOutgoingMessage(peerId, options);
 
     let media: MessageMedia;
@@ -4715,7 +4736,7 @@ export class AppMessagesManager extends AppManager {
           id: options.resultId,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
-          silent: options.silent,
+          silent: this.exteraGhostSilentFlag(options.silent),
           send_as: sendAs,
           allow_paid_stars: paidStars
         }, sentRequestOptions));
@@ -4730,7 +4751,7 @@ export class AppMessagesManager extends AppManager {
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
           schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
-          silent: options.silent,
+          silent: this.exteraGhostSilentFlag(options.silent),
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
           allow_paid_stars: paidStars
@@ -6047,6 +6068,10 @@ export class AppMessagesManager extends AppManager {
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
     mids = mids.slice().sort((a, b) => a - b);
 
+    // * GHOST-09: forwards re-route like any other send; the rich-message
+    // * re-entry below carries the decided date with it
+    options.scheduleDate ??= this.exteraGhostScheduledDate(peerId, options);
+
     for(let i = 0, length = mids.length; i < length; ++i) {
       const mid = mids[i];
       const originalMessage = this.getMessageByPeer(fromPeerId, mid) as Message.message;
@@ -6229,7 +6254,7 @@ export class AppMessagesManager extends AppManager {
       random_id: newMessages.map((message) => message.random_id),
       to_peer: this.appPeersManager.getInputPeerById(peerId),
       with_my_score: options.withMyScore,
-      silent: options.silent,
+      silent: this.exteraGhostSilentFlag(options.silent),
       schedule_date: options.scheduleDate,
       schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
       drop_author: dropAuthor || undefined,
@@ -6826,10 +6851,11 @@ export class AppMessagesManager extends AppManager {
    * `handleOfflineAfterSend`); the web's send path is spread across the send
    * invokes of this manager, so the hook is the documented extension point
    * and every send (and, for GHOST-06, edit) invoke site passes its promise
-   * through it. The request-kind tables and both decisions live in
+   * through it — including the poll composer's, the one send that lives in
+   * another manager. The request-kind tables and both decisions live in
    * `@lib/exterayondGhost`; with the stock flags the hook is a pass-through.
    */
-  private exteraGhostSendHook<T>(method: ExterayondGhostSendMethod, peerId: PeerId, promise: Promise<T>): Promise<T> {
+  public exteraGhostSendHook<T>(method: ExterayondGhostSendMethod, peerId: PeerId, promise: Promise<T>): Promise<T> {
     const flags = getExterayondGhostFlags();
 
     // * GHOST-07 fires when the request goes out (Android intercepts the
@@ -6849,6 +6875,61 @@ export class AppMessagesManager extends AppManager {
     }
 
     return promise;
+  }
+
+  /**
+   * GHOST-08 (`NaConfig.silentMessageByDefault`): the `silent` parameter of
+   * every send invoke. Android passes `!silentMessageByDefault` as `notify`
+   * at each send call site; an explicit choice (the send menu's item) wins.
+   * With the flag off this returns `explicit` untouched — the stock invoke
+   * is byte-for-byte the same.
+   */
+  private exteraGhostSilentFlag(silent: boolean | undefined): boolean | undefined {
+    return ghostSilentByDefault(silent, getExterayondGhostFlags());
+  }
+
+  /**
+   * GHOST-09 (`SendMessagesHelper.shouldSendAsGhostScheduled` + its call
+   * site): while online packets are suppressed, an ordinary send is
+   * re-routed through the scheduled-send primitive — `schedule_date =
+   * serverTime + 12` — and the server holds and delivers the message ~12
+   * seconds later without the sender-online side effect Android's
+   * `GhostScheduledSendNotice` documents. Android's payload exclusions
+   * (retry, story, invoice, game, quick replies, welcome) either have no web
+   * surface at these send functions or return earlier; paid media (stars) is
+   * the one that exists. Android's peer checks: self is excluded, a user
+   * peer must exist and not be a bot, chats pass.
+   */
+  private exteraGhostScheduledDate(peerId: PeerId, options: {scheduleDate?: number, stars?: number}, excluded?: boolean): number | undefined {
+    // * Android: `scheduleDate == 0` only — an explicitly scheduled (or
+    // * send-when-online) send keeps its date
+    if(options.scheduleDate || excluded) {
+      return undefined;
+    }
+
+    if(!ghostScheduledSendApplies(getExterayondGhostFlags(), !!options.stars)) {
+      return undefined;
+    }
+
+    if(peerId === this.appPeersManager.peerId || this.appPeersManager.isBot(peerId)) {
+      return undefined;
+    }
+
+    return this.timeManager.getServerTime() + GHOST_SCHEDULED_SEND_DELAY_SECONDS;
+  }
+
+  /**
+   * The ghost send-pipeline's parameter half for a send that lives outside
+   * this manager's own send functions — the poll composer's
+   * (`appPollsManager.invokeSendPoll`): decides the GHOST-09 scheduled date
+   * into `options` (paid sends excluded like Android's invoice/stars) and
+   * writes the GHOST-08 silent flag back, so the invoke's own
+   * `silent: params.silent` picks it up. The promise itself still goes
+   * through `exteraGhostSendHook` at the invoke site.
+   */
+  public exteraGhostApplySendParams(peerId: PeerId, options: {scheduleDate?: number, stars?: number, silent?: boolean}, excluded?: boolean): void {
+    options.scheduleDate ??= this.exteraGhostScheduledDate(peerId, options, excluded);
+    options.silent = this.exteraGhostSilentFlag(options.silent);
   }
 
   /**

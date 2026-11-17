@@ -184,6 +184,53 @@ const ExterayondOther = () => {
           <Row.Title>{i18n('Exterayond.Ghost.ReadOnInteract')}</Row.Title>
           <Row.Subtitle>{i18n('Exterayond.Ghost.ReadOnInteract.Notice')}</Row.Subtitle>
         </Row>
+        {/* GHOST-08..11 — GhostModeActivity's rows after "Read on Interact":
+            the two NaConfig send-parameter keys with their notices, then the
+            two UI wirings (the burger-menu item and the topbar indicator).
+            Plain values, no locks — none of them is a master-toggle essential
+            or participates in the "%d/5" count */}
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              toggle
+              checked={exterayondSettings.silentMessageByDefault as boolean}
+              onChange={(value) => setExterayondSetting('silentMessageByDefault', value)}
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('Exterayond.Ghost.Silent')}</Row.Title>
+          <Row.Subtitle>{i18n('Exterayond.Ghost.Silent.Notice')}</Row.Subtitle>
+        </Row>
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              toggle
+              checked={exterayondSettings.ghostScheduledSend as boolean}
+              onChange={(value) => setExterayondSetting('ghostScheduledSend', value)}
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('Exterayond.Ghost.Scheduled')}</Row.Title>
+          <Row.Subtitle>{i18n('Exterayond.Ghost.Scheduled.Notice')}</Row.Subtitle>
+        </Row>
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              toggle
+              checked={exterayondSettings.showGhostInDrawer as boolean}
+              onChange={(value) => setExterayondSetting('showGhostInDrawer', value)}
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('Exterayond.Ghost.InDrawer')}</Row.Title>
+        </Row>
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              toggle
+              checked={exterayondSettings.showGhostModeStatus as boolean}
+              onChange={(value) => setExterayondSetting('showGhostModeStatus', value)}
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('Exterayond.Ghost.Indicator')}</Row.Title>
+        </Row>
       </Section>
       <Section caption="Exterayond.Backup.Info">
         <Row clickable={importBackup}>
