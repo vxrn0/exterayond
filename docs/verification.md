@@ -1410,27 +1410,32 @@ only prior check was synthetic.
 
 ---
 
-### 5.19 PILLS-01 / PILLS-06 / PILLS-12 — the Pill Stack strip and its cache pill (packet 052)
+### 5.19 PILLS-01 / PILLS-06 / PILLS-12 — the Pill Stack strip and its cache pill (packet 052, content per packet 088)
 
 - Appearance tab → row "Pill Stack" opens the Pill Stack screen (the web
   analog of Android's `PillStackSettingsActivity`, reachable from Appearance
   on Android too).
 - The strip lives at the inline end of the chat list search field. Default
-  layout "5,6" shows one pill — **Storage Usage** (the web registry carries
-  only the cache pill; Proxy has no web counterpart and stays in the stored
-  layout unrendered).
-- Look at: the pill shows the client's cached size and refreshes (3-minute
-  interval, like `CachePill`); typing in the search field hides the strip,
-  clearing it brings it back; the pill's click opens Data & Storage; hub →
-  tap the pill in "Active Pills" (it moves to Hidden, the strip empties live),
-  tap it in "Hidden Pills" (it returns); "Reset to Default" restores 5,6 with
-  a toast; `?rtl=1` — the strip sits at the left edge of the field. The
-  switch machinery (packet 053) is inert with one pill — it becomes visible
-  when a second pill registers: wheel over the strip and ArrowUp/ArrowDown on
-  the pill switch, `OEPillInfiniteScrolling` decides wrap vs. clamp. Where
-  CacheStorage is unavailable (Firefox private mode), the pill keeps its name
-  with an empty value and the console stays clean (packet 058 — the failed
-  collection is contained, nothing rejects).
+  layout "5,6" shows one pill (the web registry carries only the cache pill;
+  Proxy has no web counterpart and stays in the stored layout unrendered).
+- Look at: the pill shows the client's cached SIZE alone — Android's
+  `CachePill` carries the formatted size in its text; the "Storage Usage"
+  name belongs to the pill editor and the long-press options, never inside
+  the pill (packet 088) — and refreshes (3-minute interval, like
+  `CachePill`). Typing in the search field hides the strip, clearing it
+  brings it back; **with stories shown in the header
+  (`HideStoriesFromHeader` off) the pills stay hidden — the folded stories
+  strip owns the same slot** (packet 088's overlap fix); the pill's click
+  opens Data & Storage; hub → tap the pill in "Active Pills" (it moves to
+  Hidden, the strip empties live), tap it in "Hidden Pills" (it returns);
+  "Reset to Default" restores 5,6 with a toast; `?rtl=1` — the strip sits at
+  the left edge of the field. The switch machinery (packet 053) is inert
+  with one pill — it becomes visible when a second pill registers: wheel
+  over the strip and ArrowUp/ArrowDown on the pill switch,
+  `OEPillInfiniteScrolling` decides wrap vs. clamp. Where CacheStorage is
+  unavailable (Firefox private mode), the pill keeps an empty value and the
+  console stays clean (packet 058 — the failed collection is contained,
+  nothing rejects).
 - **[no chat data]**
 - PASS/FAIL:
 
@@ -1961,4 +1966,42 @@ account or device — that part is yours; the steps mark where.
   toggle. With the indicator off: never drawn.
 - RTL: the pictogram rides the title row and mirrors with it.
 - **[AUTH · none — visual states only]**
+- PASS/FAIL:
+
+---
+
+## Batch 8 — the polish backlog (packet 089)
+
+### 8.1 Cross-tab settings sync (packet 089, appended)
+
+- Open the app in **two windows** of the same browser profile (same origin —
+  the settings record is per-origin, not per-account; sign-in is not needed).
+- In window A change a hub setting with a visible effect — e.g. Remove
+  Message Tail, Section Radius, Hide Stories, the Ghost master toggle.
+  Window B follows **without a reload**: the hub row's control AND the effect
+  itself (the tail, the cards' radius, the stories strip, the ghost
+  pictogram). The reverse direction too (B changes, A follows).
+- "Reset all settings" (OTHER-03) in window A: window B returns to defaults
+  live — its rows re-render and the ghost indicator (if shown) drops.
+- A toggle in one window while the other sits closed/reloaded is the old
+  last-writer-wins behavior and stays correct: the reopening window boots
+  from the record.
+- **[no chat data]**
+- PASS/FAIL:
+
+### 8.2 The double-tap keys through the .extera remap tables (packet 089, appended)
+
+- Export a `.extera` (Other tab) with a double-tap action set — Chats tab →
+  "Double tap", e.g. incoming Reply, outgoing Repeat. The export carries
+  `exteraconfig.doubleTapAction` / `doubleTapActionOutOwner` in exteraGram's
+  own numbering.
+- Import it back (fresh profile or after OTHER-03): both actions return, the
+  toast is the plain "Applied N settings" — `doubleTapAction` /
+  `doubleTapActionOutOwner` are no longer reported as unsupported.
+- Android-side spot check (optional): the same file imports in exteraless /
+  exteraGram with the same actions, and an Android export of a common action
+  (none / reactions / reply / save / repeat / delete / translate) imports
+  here. A file carrying an action the web cannot back (Android's etg 3/4
+  slots) reports that key as unsupported and leaves the stored action alone.
+- **[no chat data]**
 - PASS/FAIL:

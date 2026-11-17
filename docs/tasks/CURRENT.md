@@ -251,19 +251,41 @@ icon font pipeline needs icomoon.io (offline), hence the inline SVG. Runbook
 
 **Priority override — polish (user instruction, 2026-11-13).** The user
 reported many bugs and directed that the work move from new features to
-polishing what is built. **Packet 088** ran the polish pass: three verified
-bug sweeps over the port's surfaces plus the Android pill-stack reference,
-16 defects fixed — the pill strip's overlap with the folded stories strip
-(the screenshot's "ago" fragment: a mid-fold story name painting at header
-height), the pill's content per Android (size only), the poll send bypassing
-the whole ghost pipeline, the FOLD dividers sticking/duplicating, the send
-menu's stale first open, the attached-sidebar toggle never re-running the
-column-width math, the reset leaving GHOST-07/08/09 stale worker-side, the
-`.extera` empty-menu round-trip corrupting the menu, and the player/media
-viewer leaks and stale toggles — all recorded in progress.md's packet 088.
-Full unit suite green (6283), build clean. Recorded-not-fixed: cross-tab
-settings sync, the DoubleTap remap tables, the five-push fan-out per master
-toggle.
+polishing what is built. **Packet 088** ran the first polish tranche (16
+fixes; see progress.md). **Packet 089** closed the three recorded items
+(cross-tab sync, the DoubleTap remap tables, the push coalescing). **Packet
+090 (2026-11-17)** continued with six more verified sweeps run through
+parallel subagents — theming, composer, message rendering, hub tabs,
+media/player, manager/store, plus a full `.extera` mapping diff against the
+pinned Android EtgBackup (clean both ways) and an RTL/a11y sweep (zero
+P1/P2) — with ~45 more fixes: the inverted media-viewer menu verify, the
+accent preview wiping the palette, invertMedia draft restore/leak, three
+popup send menus ignoring silent-by-default, the reactions-hide killing the
+message time, the bubbleRadius corners half-wired, the Plugins tab blind to
+install/uninstall, mention reads stuck in the unread band, `appEvent` never
+dispatching START, the `.extera` decrypt vs re-saved files, and the a11y
+names for the ghost indicator/lock buttons. Full unit suite green (6291),
+build clean. Recorded-not-fixed: safe-mode trip announcement (needs new
+copy), the ≤60 s relative-last-seen lag, the ShowSmallGIF/stickerSize
+apply-on-render consistency.
+
+**Packet 089 (2026-11-17) closed those three recorded items.** The settings
+store syncs across tabs through the native `storage` event — it re-reads the
+record with the boot's validation, applies only the keys that actually moved
+through `setExterayondSetting` (the same live/push announcement contract as a
+local write) and mirrors a remote reset with the reset's own announcements;
+a record equal to the memory announces nothing, which is the echo guard.
+The `.extera` backup carries `doubleTapAction` / `doubleTapActionOutOwner`
+through the EtgBackup remap tables ported verbatim (EtgBackup.java:421-426):
+only the common actions transfer, a web-only value exports nothing, an
+untransferable exteraGram value imports as reported-unsupported. The ghost
+master toggle's worker pushes coalesce into one synchronous flush carrying
+the final state — synchronous so the push stays ahead of the toggle's own
+status request (GHOST-04's rewrite reads the flags worker-side); a microtask
+queue was considered and rejected for exactly that ordering reason. Four
+affected suites green (148), tsc/lint/scss-types clean, no new modules.
+Runbook batch 8 appended (8.1 the cross-tab walk, 8.2 the remap round-trip);
+both await the user's acceptance.
 
 Remaining player candidates: PLAYER-07 (cover extend — visual), PLAYER-13
 (block order — would reuse the FOLD-10/12 editor pattern over the web

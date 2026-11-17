@@ -3872,3 +3872,178 @@ regression; the ghost suite's decision pin went 5 → 6 sites and gained the
 poll-site contract; the poll webpage suite's manager mocks carry the two
 pipeline entry points. Full unit suite green (6283); `tsc --noEmit` clean;
 oxlint clean on the touched files; production `vite build` clean.
+
+## 089 / the polish backlog — cross-tab sync, the double-tap remap tables, the push coalescing (2026-11-17)
+
+The three "recorded, not fixed" items of packet 088, worked as one packet.
+The session opened on an in-flight worktree that already held the master
+toggle's push deferral (the store hunk and one test assertion, undocumented):
+completed as the third item below, then the two remaining ones. No new
+page-level modules — the import-graph ratchet is untouched.
+
+**Cross-tab settings sync (088's "no `storage` listener").** The store now
+listens for the window's native `storage` event: on an event for its record
+key it re-reads the persisted record with the boot's validation
+(`parsePersisted`, extracted from `readPersisted` — unknown keys dropped,
+wrong-typed or out-of-range values fall back to their defaults) and applies
+only the keys that actually moved, through `setExterayondSetting` — so the
+announcements are exactly the store's own contract: the live keys announce
+tab-side, the locks announce, `silentMessageByDefault` rides both channels
+(the send menu rebuilds on the live event, the worker hook reads the push),
+SortByUnread and the ghost flags push worker-side. Re-reading the record (not
+the event's snapshot) is what makes a stale event a no-op and keeps two tabs
+from echoing each other: a write-back of an already-applied record moves
+nothing and announces nothing — which also covers the migrated-legacy-key
+write of another tab, whose content a synced tab already holds. A removal
+event (`newValue` null and the record really gone — the store's own reset is
+the only remover) mirrors a reset through `resetExterayondSettings`: the same
+per-key live announcements, one `key: 'reset'` ghost event, one worker
+re-push; the mirror's own re-remove is a no-op that fires nothing, so the
+chain terminates. No BroadcastChannel, no server — the native event is the
+whole surface. The listener rides `hotListen` on `window`, document-guarded
+like the rest of the store's DOM work. Honest limits: the record is the
+shared truth, so a key an older-version record omits falls back to its
+default (boot semantics — a version-skewed tab can drop a newer key on its
+next write, self-healing on reload); two tabs writing different values at the
+same moment resolve last-writer-wins on the record and every tab converges to
+it — there is no merge.
+
+**The double-tap remap tables (088's EtgBackup correction).** Both Android
+keys are real EtgBackup entries under its exteraGram remap tables
+(EtgBackup.java:421-426, re-read from the pinned source): `doubleTapAction`
+(NaConfig.getDoubleTapAction, exteraGram range 0..8) and
+`doubleTapActionOutOwner` (NaConfig.getDoubleTapActionOut, range 0..9). The
+tables are ported verbatim into `src/lib/exteraBackup/etgBackup.ts`
+(`DOUBLE_TAP_REMAP`) and wired as two SUPPORTED entries with the usual
+toEtg/toOurs shape and the exteraGram-side range checks; both store keys
+(`DoubleTapAction`, `DoubleTapActionOut`) already existed. Only the common
+actions transfer: a web-only value (the LLM translate, repeat-as-copy,
+forward, download, edit on the incoming side) exports nothing, like Android's
+null reader; an exteraGram value with no Nagram counterpart (etg 3/4,
+Android's -1 "nothing to transfer") imports as reported-unsupported and never
+applies — the web keeps its null → unsupported reporting where Android
+silently drops (and still counts) such a value, per the module contract; etg
+1 "reactions" imports as SHOW_REACTIONS — Android's own lossy pair. Both keys
+left `KNOWN_UNSUPPORTED_KEYS`; `translationProvider` and `tabIcons` stay —
+their remap tables are a different recording, not this scope.
+
+**The master toggle push coalescing (088's five-push fan-out).** The
+deferral found in the worktree was completed and generalized: the store's
+`runWithGhostPushCoalesced` wraps the master toggle's batch and the cross-tab
+apply alike — inside it the ghost-flag pushes defer and one synchronous flush
+carries the final state, so one real move produces one push and the worker
+never sees an intermediate half-ghost state. The flush stays synchronous
+deliberately, against the brief's "microtask/one-frame queue" suggestion: the
+worker processes the manager calls in order and GHOST-04's status rewrite
+reads the flags when the request arrives — a microtask flush would put the
+push behind the toggle's own status packet and let it leave with stale flags.
+The per-key event announcements are untouched (the tab-side contract); the
+reset still pushes exactly the final state (its own single-push loop, pinned
+by tests).
+
+Tests: `tests/exterayondSettings.test.ts` 42 → 47 — the remote write
+applying moved keys through the live/push split, the echo guard (a record
+equal to the memory announces nothing and pushes nothing), the remote
+master-toggle move pushing once with the final state, the remote reset
+mirroring the reset ('reset' once, the worker re-pushed), and events for
+foreign keys ignored; `tests/exteraBackup.test.ts` 36 → 39 — every
+export/import pair of both remap tables, the untransferable -1 values, the
+exteraGram range rejections, and the keys counting as known;
+`tests/exterayondGhost.test.ts` gained the ordering pin (the coalesced push
+lands before the toggle's status request). Four affected suites green (148);
+`tsc --noEmit` clean; oxlint clean on the five touched files;
+`scripts/scss-types.js` clean. Not run: the production build — no new
+modules, no bundler-relevant change (the store's DOM work stays
+document-guarded), so the 088 build result stands.
+
+Runbook: batch 8 appended — 8.1 the cross-tab sync walk (two windows, the
+reset propagation included), 8.2 the double-tap keys' round-trip through a
+real `.extera` (the toast no longer names them). Checklist: CHAT-10's
+annotation gained the remap-table note (import fidelity moved; the entry
+itself was already checked).
+
+## 090 / the polish pass continues — six more sweeps, ~45 fixes (2026-11-17)
+
+The "maximum subagents" directive: the Explore sweeps ran continuously
+(two concurrent — the hard limit — feeding from a queue) over the remaining
+clusters, and every verified finding was fixed as its report landed. Two of
+the first pair died silently at a session interruption (31-byte stubs, no
+failure notification) and were relaunched; the diagnosis was by output-file
+metadata, not content. Totals for this tranche:
+
+**Theming (7 findings, agent sweep).** P1: the accent drag preview wiped the
+palette surfaces until the commit's `theme_changed` — the preview re-applies
+the palette now (`applyCurrentPalette` exported). The `.night` mirror rule is
+palette-aware (the controller owns `nightMirrorOverrides`, the palette feeds
+it and the mirror re-renders immediately — popups over the viewer, stories
+and calls resolve the palette's surfaces). The canvas consumers' color cache
+resets on the palette apply. The MD3 master reads "full set vs not" (a
+partial state's click completes the set instead of wiping it). The peer
+background resolver honors `OEAppearanceCustomThemes`. The dead
+`oe-separate-headers` root class is gone (Section owns the behavior). The
+accumulating `on(isNightTheme)` effects in chat.ts are hoisted to one
+subscription.
+
+**Composer (7).** P1×2: `invertMedia` is restored from drafts and synced to
+what the position radio shows (it used to leak across messages and flip
+edits); the three popup send menus (new media, forward, AI editor) honor
+`silentMessageByDefault` like the composer's own — they used to send silent
+under a "Send with Sound" label. P2: `DisableLinkPreviewByDefault` no longer
+kills a cross-device draft's explicitly kept preview; aborted recordings
+reset the one-shot flags; `hideGroupSticker` applies live to an open
+dropdown (the key joined the live-event list).
+
+**Message rendering (7).** P1×2: the hide-reactions toggles no longer hide
+the message TIME living inside the reactions element (the strip's children
+hide, the time stays; two picker surfaces opt out with `oe-reactions-keep`);
+the bubbleRadius slider now moves every corner — five re-pinned overrides
+used static stock radii, worst case the default-on RemoveMessageTail forcing
+a 15px tail corner. P2: the context menu's reactions strip composes Android's
+`!disabledReactions()` half (shared `isReactionsHiddenForPeer`); sticker
+shape "as the bubble" follows the slider via the var; the reply trio's
+off-states scope to bubbles only.
+
+**Hub (7).** P1: the Plugins tab is reactive over install/uninstall/enable
+(its reads are plain localStorage — a version signal drives the re-render).
+P2: the plugin row's toggle no longer also expands the details; the Main
+Menu screen's empty section card is gone (`noContent`); `.extera` import
+fails with a toast instead of silently; the ghost master toggle skips the
+success toast on a fully-locked no-op (Android shakes); the Import row wears
+an inbound icon; the search extractor no longer indexes slider tick labels
+as rows (562 → 557 entries).
+
+**Media/player (6, one P1).** P1: the media viewer's more menu had its
+`verify` INVERTED since the port — every item filtered backwards (empty menu
+on normal media, forbidden actions shown); negated. P2: the cover swipe
+ignores slotted playback; the requests plate guards a stale-overwrite race
+with a sequence tag; the pinned plate's shipped `debug = true` log spam is
+off; the audio plate destroy clears the body class.
+
+**Manager/store (7, two P1).** P1: mention/reaction reads re-process the
+filter index (`processDialogForFilters`) like their sibling paths — with
+SortByUnread on, dialogs were stuck in the unread band; P1:
+`pluginsRuntime.appEvent` was a documented facade member that never fired —
+START dispatches after the boot load. P2: the dialogs clear cancels pending
+forum-resort timeouts; plugin unload callbacks are per-instance (unloading
+one plugin fired every other's); the safe-mode toggle stops/reloads the
+runtime (recovery existed only on page reload); the safe-mode auto-trip
+flag stays write-only (recorded — announcing it needs new copy).
+
+**Backup + RTL (4).** The `.extera` decrypt path strips line breaks and
+anchors its pattern (Android's reader does both; a re-saved file's trailing
+newline broke the final byte group); the stored no-op keys
+`showMessageDetails`/`showViewHistory` are recognized in `.extera` like
+their siblings (the "round-trips" comments are true now); the topbar ghost
+indicator carries `role="img"` + a localized name (it is the only persistent
+status signal in a chat); the ghost lock button's accessible name names its
+row. The RTL sweep found zero P1/P2 — the fork's CSS is consistently logical.
+
+Tests: the cover-swipe and menu-composition pins updated consciously (the
+slotted gate, the corrected verify semantics); the backup round-trip test
+covers the two no-op keys; the group-sticker test's rootScope mock carries
+`dispatchEventSingle`; the dialogs timeouts map defaults-initialized. Full
+unit suite green (6291); `tsc --noEmit` clean; oxlint clean; production
+build clean. Recorded-not-fixed: cross-tab settings sync, the five-push
+fan-out (coalesced since), safe-mode trip announcement (new copy), the
+relative-last-seen ≤60 s lag, ShowSmallGIF/stickerSize apply-on-render
+consistency.
