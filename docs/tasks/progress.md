@@ -3698,3 +3698,177 @@ Tests: the four affected suites rerun only — `exterayondGhost` (30),
 103 green. `scripts/scss-types` and `tsc --noEmit` clean; oxlint clean on the
 two touched files. No source file changed — fixes are test-contract only, so
 the checklist is untouched (**83/296**) and CURRENT.md's state stands.
+
+## 087 / the ghost screen's send-parameter keys and the two UI wirings (2026-11-13)
+
+The in-flight packet found in the worktree (core + store + manager gates for
+GHOST-08/09 already written by the previous session) was completed to its full
+scope: the Android contract re-read from the pinned source
+(`GhostModeActivity`, `SendMessagesHelper.shouldSendAsGhostScheduled` @8b7ec40,
+`ChatActivityEnterView`'s send popup, `DialogsActivity`'s drawer, `ActionBar`'s
+title drawable, the `ayu_ghost` vector), every send invoke's `silent` field,
+and the two UI wirings against the owning Web K behavior.
+
+**GHOST-08 (`NaConfig.silentMessageByDefault`)**: the decision
+`ghostSilentByDefault` (explicit choice wins, absent choice takes the flag)
+now wraps **seven** invoke sites — the in-flight diff had only sendText's
+text/media branch; added sendText's inline-bot branch (the stock invoke omits
+the `silent` field entirely, `undefined` drops in the TL serializer, so off =
+byte-for-byte stock), sendFile, sendGrouped's stars/multiMedia branch,
+sendOther's two branches and forwardMessages. The composer's send menu flips
+to **"Send with Sound"** (new lang key `Chat.Send.WithSound`, Android's
+`SendWithSound`; icon `unmute` — the established mute pairing) while the flag
+is on, and its click records the explicit direction
+(`this.sendSilent = !silentMessageByDefault`; the field's type widened to
+`boolean | undefined`). The schedule popup's silent checkbox is untouched —
+Android's schedule dialog reads its own per-dialog `silent_<dialog>`
+preference, so nothing to port there.
+
+**GHOST-09 (`NaConfig.ghostScheduledSend`)**: audited the in-flight port
+against `shouldSendAsGhostScheduled` — the config condition (flag AND online
+suppressed), the stars exclusion (the one web-surfaced payload exclusion), the
+peer checks (self, bot; chats pass — Web K has no secret chats, so Android's
+encrypted-dialog exclusion has no surface), the truthy-date guard (explicit
+schedules and send-when-online keep their dates), and Android's
+`getCurrentTime() + 12` (`GHOST_SCHEDULED_SEND_DELAY_SECONDS = 12`). The five
+decision sites (sendText, sendFile's ephemeral entry, sendGrouped, sendOther,
+forwardMessages) sit after the re-entries so albums/rich messages share one
+date. No changes needed — verified clean, contracts pinned in tests.
+
+**GHOST-10 (`NekoConfig.showGhostInDrawer`)**: the burger menu's ghost item,
+fixed right before Settings (Android adds it outside the layout-managed block
+— no `oeMenuId`, so FOLD-13's layout pass leaves it in the stock spot; with a
+customized layout it rides the middle web-only block, a recorded corner
+divergence). Click opens the hub's Other tab (Android's click opens
+GhostModeActivity); the label `Exterayond.Ghost.Enable`/`Disable` re-reads on
+every open through the button object that ButtonMenu re-renders. Android's
+long-press toggle has no menu-item analog — the toggle lives in the tab the
+item opens (recorded in the checklist entry).
+
+**GHOST-11 (`NekoConfig.showGhostModeStatus`)**: the ghost pictogram rides the
+chat topbar's title right (Android's `ActionBar.setTitle` status drawable; the
+web chat list has no title element — LOOK-04 — so the topbar is the adapted
+surface). The pictogram is Android's `ayu_ghost` vector ported verbatim as an
+inline SVG (`src/components/exterayondGhostIcon.ts`): the icon pipeline
+compiles SVGs into the tgico font through the icomoon web service, which is
+unavailable offline, and both consuming surfaces take plain elements
+(ButtonMenu's `iconElement`, the topbar's DOM). Visibility re-checks on the
+store's new `exterayond_ghost_mode_changed` broadcast (essentials + locks +
+the toggle; a reset that moved any announces once with `key: 'reset'`) and on
+every title repaint.
+
+Hub: the four rows after "Read on Interact" in Android's row order
+("Send without Sound" + notice, "Send as scheduled" + notice, "Shortcuts",
+"Ghost Mode Indicator" — Android's strings verbatim, plain values, no locks).
+The settings-search index regenerated (558 → 562 entries).
+
+Tests: `tests/exterayondGhost.test.ts` — the two decision truth tables
+(silent-by-default's explicit-wins, scheduled-send's three-condition
+conjunction), the +12 constant pin, the seven-wrap and five-site source
+contracts (with the helper-body window: date guard, payload exclusion, peer
+checks, server time), the burger/topbar/icon source contracts, the store
+event contract; `tests/exterayondSettings.test.ts` — the four new defaults,
+the push-vs-event split (send parameters push worker-side, UI keys announce
+tab-side, locks announce, unchanged silent, reset announces 'reset');
+`tests/exterayondTabs.test.tsx` — the row-order pin extended and the 087
+rows' plain-value round-trip outside the master toggle. Four suites green
+(111); full unit suite green (6279) after regenerating the search index.
+`tsc --noEmit` clean; oxlint clean on the eleven touched files; production
+`vite build` clean.
+
+Checklist: GHOST-08..11 checked and struck through with their limits
+recorded. **Checklist count: 87/296.** Runbook 7.4–7.6 appended (7.3's
+missing PASS/FAIL line completed). All new UI awaits the user's visual
+acceptance; the suppression observables wait on the second account.
+
+## 088 / the polish pass — the three-cluster bug hunt (2026-11-13)
+
+The user redirected the work from features to polishing ("very many bugs")
+and supplied a screenshot of the sidebar header: the pill chip ("Storage
+Usage 0 B") with a stray text fragment beside it. Three parallel read-only
+sweeps ran over the port's surfaces (sidebar UI cluster, menus/player/
+popups cluster, lib/store cluster), each finding verified against the owning
+code, and the Android reference was re-read for the pill stack
+(`PillStackController`/`PillStackView`/`CachePill` @8b7ec40). 16 defects
+fixed; the screenshot's anomaly identified and fixed among them.
+
+**The screenshot's bug (P1)**: the pill strip and the stock stories strip
+share one slot — the stories strip folds into the search field's inline end
+as the list scrolls (`appDialogsManager` foldInto + `-69px` translate), and
+the pill strip is absolutely positioned at the same spot (`z-index` 2 over
+the strip's 1, translucent background). The folded story items show through
+the chip, its clicks steal theirs, and a mid-fold item NAME paints at header
+height — the "ago" fragment (dialog timestamps were ruled out: Web K's list
+times never produce "ago"). Fix: the pills yield while stories render in the
+header (`HideStoriesFromHeader` off), read from the store and live through
+the settings event. Also fixed in the same cluster, from the Android
+reference: the CachePill carries the SIZE alone ("12 MB") — the "Storage
+Usage" name belongs to the editor and the long-press menu, never inside the
+pill; the pill index desync (render list vs persisted ids filtered
+differently — one filtered list now drives both); the wheel listener never
+detached (middleware cleanup now covers it); the size value snapshotted from
+a live i18n element (appended whole instead); the switch animation clipped
+by the field's rounded edge (the ±8px shift stays within the field's free
+space); the double rebuild on a layout change (the two half-writes coalesce
+into one rebuild).
+
+**Menus/player cluster (P1×2, P2×4)**: the FOLD dividers stuck, jumped and
+duplicated after any layout edit — ButtonMenuItem caches the runtime `<hr>`
+it built back into `separator`, so a `separatorDown`-only reset re-attached
+the stale element and stock frame lines lost their `true`; the reset now
+runs on every application (stock included), on ALL items, restoring the
+pristine mark captured before the menu's first render. The GHOST-08 send
+menu was frozen from construction: the first right-click after toggling
+`silentMessageByDefault` showed the stale direction and SENT the opposite of
+what it said — the setting change now rebuilds the menu. The MD3 player
+rebuilt and re-fetched the artwork on every unpause (the controller's
+'play' fires on resume; the cover rebuilds only when the doc changed). The
+mini player's PLAYER-29/30 effects ran outside any Solid root and were never
+disposed (own root, disposed with the plate). The media viewer's Forward
+toggle was stale while the viewer stayed open (the last visibility pass is
+kept and re-run on the settings event). The GHOST-10 comment and the menu
+layout's doc now record the customized-layout pinning of the web-only
+composites (verified divergence, not silently pretended away).
+
+**lib/store cluster (P1×3, P2×3)**: the poll composer's send bypassed the
+entire ghost pipeline — a raw `messages.sendMedia` invoke in
+`appPollsManager` with no hook (no GHOST-06/07), no silent flag (polls sent
+with sound under GHOST-08) and no scheduled date (polls leaked the online
+packet GHOST-09 exists to avoid); the hook is now the documented public
+extension point, the parameters apply through
+`exteraGhostApplySendParams` before the poll's local message is generated,
+paid polls excluded like Android's invoice/stars, and the poll site carries
+its own source contract. `LIVE_EVENT_KEYS` was missing four keys consumers
+listen for — `OEAppearanceAttachedSidebar` (the attached-sidebar toggle
+never re-ran the column-width math; the chat could overlap the docked panel
+until a resize), `HideStoriesFromHeader`, `silentMessageByDefault`,
+`MediaViewerMenuItemForward`. The settings reset re-pushed worker ghost
+flags gated on the five essentials only — a reset that moved just
+`silentMessageByDefault` left the worker sending silently after "Reset all"
+(the gate now covers all `GHOST_WORKER_KEYS`). The `.extera` backup exported
+an uncustomized menu as `"[]"`/`"[]"`, which imported back (web or Android)
+as a customized layout that collapsed the menu — the stock menu exports
+nothing. The master toggle no longer fires the Android status request (or
+stores no-op keys) when nothing moved. The DoubleTap backup comment was
+corrected against `EtgBackup.java` (both keys ARE exported there under remap
+tables; the web keeps reporting them unsupported until the tables are ported
+— porting them is a recorded follow-up, not done in a polish pass).
+
+**Attached-sidebar P3s**: the column default capped against the raw viewport
+instead of the safe-area-aware content box (a shared `getDefaultColumnWidth`
+now serves all four sites); the stale `5.5rem` comment corrected to the
+real 80px; the one-shot layout-animate class drops on `transitionend` (the
+500ms timeout stays as the no-transition fallback).
+
+Recorded, not fixed (needs a decision or is a feature, not polish): no
+cross-tab settings sync (no `storage` listener — last writer wins per tab);
+the Android double-tap remap tables unported; the master toggle still queues
+up to five worker pushes per real move (each carries a valid state, the last
+wins within one tick).
+
+Tests: the pill strip suite gained the stories-yield rule and flushes the
+coalesced rebuild; the menu layout suite gained the cached-`<hr>` reset
+regression; the ghost suite's decision pin went 5 → 6 sites and gained the
+poll-site contract; the poll webpage suite's manager mocks carry the two
+pipeline entry points. Full unit suite green (6283); `tsc --noEmit` clean;
+oxlint clean on the touched files; production `vite build` clean.

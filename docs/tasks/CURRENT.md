@@ -221,9 +221,7 @@ GHOST-07's "Read on Interact" row (Android's standalone key, default true)
 marks the dialog read on the server right at send time when read receipts
 are suppressed — the direct-invoke port of Android's `allowReadPacket`
 bypass. Runbook 7.3 appended (second-account checks). Checklist count
-**82/296**. Ghost's rest: GHOST-08 (composer silent-by-default), GHOST-09
-(the exact `shouldSendAsGhostScheduled` semantics), GHOST-10 (drawer item),
-GHOST-11 (topbar indicator) — all small wirings over the existing core.
+**82/296**.
 
 **Packet 085 (2026-11-05) started the translation subsystem** — TRANS-05's
 foundation: `src/lib/exterayondTranslate.ts` (the exact MessageHelper ports
@@ -233,7 +231,39 @@ first wired consumer — the translate popup's copy, which under Manual Only/
 On carries `original + separator + translation` like Android's `startTrans`
 takeaway (off = stock copy). The inline-into-message pipeline stays the
 annotated long tail (TRANS-02..14 wait on a web bubble-render primitive).
-Runbook 5.29 appended. Checklist count **83/296**.
+Runbook 5.29 appended.
+
+**Packet 087 (2026-11-13) closed the Ghost screen's rest — GHOST-08..11**:
+GHOST-08's `silentMessageByDefault` decision wraps the `silent` field of all
+seven send invokes (off = byte-for-byte stock) and flips the composer's send
+menu to "Send with Sound" while on; GHOST-09's `ghostScheduledSend` re-routes
+ordinary sends as scheduled `serverTime + 12` while online packets are
+suppressed (self/bots/stars/explicit schedules excluded, Android's exact
+`shouldSendAsGhostScheduled` semantics); GHOST-10 puts the ghost item in the
+burger menu before Settings (opens the hub's Other tab, label re-reads per
+open); GHOST-11 draws the `ayu_ghost` pictogram (ported verbatim as an inline
+SVG) beside the chat topbar's title, live via the new
+`exterayond_ghost_mode_changed` broadcast. The hub's Ghost section gained the
+four rows after "Read on Interact" (Android's row order and strings). The
+drawer item's Android long-press toggle has no menu analog (recorded); the
+icon font pipeline needs icomoon.io (offline), hence the inline SVG. Runbook
+7.4–7.6 appended. Checklist count **87/296**.
+
+**Priority override — polish (user instruction, 2026-11-13).** The user
+reported many bugs and directed that the work move from new features to
+polishing what is built. **Packet 088** ran the polish pass: three verified
+bug sweeps over the port's surfaces plus the Android pill-stack reference,
+16 defects fixed — the pill strip's overlap with the folded stories strip
+(the screenshot's "ago" fragment: a mid-fold story name painting at header
+height), the pill's content per Android (size only), the poll send bypassing
+the whole ghost pipeline, the FOLD dividers sticking/duplicating, the send
+menu's stale first open, the attached-sidebar toggle never re-running the
+column-width math, the reset leaving GHOST-07/08/09 stale worker-side, the
+`.extera` empty-menu round-trip corrupting the menu, and the player/media
+viewer leaks and stale toggles — all recorded in progress.md's packet 088.
+Full unit suite green (6283), build clean. Recorded-not-fixed: cross-tab
+settings sync, the DoubleTap remap tables, the five-push fan-out per master
+toggle.
 
 Remaining player candidates: PLAYER-07 (cover extend — visual), PLAYER-13
 (block order — would reuse the FOLD-10/12 editor pattern over the web

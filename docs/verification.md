@@ -1899,3 +1899,66 @@ account or device — that part is yours; the steps mark where.
 - **[no chat data]** (status/unread observations only)
 - PASS/FAIL:
 
+- PASS/FAIL:
+
+### 7.4 GHOST-08 — silent by default and the send menu's escape (packet 087)
+
+- The Ghost section gains **"Send without Sound"** after "Read on Interact"
+  (Android's `SilentMessageByDefault` row, its notice as the subtitle;
+  default off, no lock). With it off: the composer's send menu still reads
+  **"Send Without Sound"** with the muted icon — stock everywhere.
+- With it on, every ordinary send goes without sound — **[second account]**
+  the receiving side gets no delivery notification (the message arrives
+  silently). The send menu's item flips to **"Send with Sound"** with the
+  unmuted icon (Android's `SendWithSound` send-popup swap): that one press
+  sends WITH sound — **[second account]** the notification arrives. The
+  flip re-reads on every menu open (toggle the row, reopen the menu).
+- The schedule popup's own silent checkbox is a stock per-chat setting and
+  does not follow the flag (Android's schedule dialog reads its own
+  `silent_<dialog>` preference, same divergence).
+- The row is searchable ("Send without Sound", "Send as scheduled", the
+  section "Ghost essentials").
+- **[AUTH · content: two throwaway messages, one via the menu]**
+- PASS/FAIL:
+
+### 7.5 GHOST-09 — the ghost-scheduled re-route (packet 087)
+
+- The Ghost section gains **"Send as scheduled"** (Android's
+  `GhostScheduledSend`, its notice documents the trick; default off, no
+  lock). With it off: sends are immediate — stock.
+- With it on AND **"Don't Send Online"** on, every ordinary send is handed
+  to the server as a scheduled message ~12 seconds ahead: **[second
+  account]** the message still arrives, but your status never flips to
+  online around the send (open the chat, wait, send — the "online" badge
+  does not appear). With "Don't Send Online" off the row does nothing
+  (nothing to hide).
+- Exclusions that keep the stock path: a send to yourself (Saved Messages),
+  to a bot, an already-scheduled send (the schedule popup), a
+  send-when-online, paid-media (stars) sends. Forwarded messages and
+  albums follow the ordinary sends.
+- The local chat shows the message as scheduled for ~12 seconds, then it
+  sends — the same visible behavior Android's ghost-scheduled send has.
+- **[AUTH · second account; status/unread observations only]**
+- PASS/FAIL:
+
+### 7.6 GHOST-10, GHOST-11 — the drawer item and the topbar indicator (packet 087)
+
+- The Ghost section gains **"Shortcuts"** (Android's `GhostModeInDrawer`)
+  and **"Ghost Mode Indicator"** (Android's `GhostModeStatusIndicator`),
+  both plain values, no locks.
+- **GHOST-10**: with "Shortcuts" on, the burger (tools) menu carries the
+  ghost item right before Settings (Android's fixed drawer position):
+  click opens the hub's Other tab (the GhostModeActivity analog); the
+  label reads **"Enable Ghost"** / **"Disable Ghost"** per the live ghost
+  state — flip Ghost Mode from the hub and reopen the menu to see it move.
+  Android's long-press toggle has no menu-item analog (the toggle lives in
+  the tab the item opens). With "Shortcuts" off: no item, stock menu.
+- **GHOST-11**: with the indicator on AND Ghost Mode active, the ghost
+  pictogram (Android's `ayu_ghost`, ported verbatim) sits right of the
+  chat topbar's title. Toggle the master (or any essential, or the
+  indicator row) while a chat is open: the pictogram appears/disappears
+  without reopening the chat. Ghost Mode inactive → gone, whatever the
+  toggle. With the indicator off: never drawn.
+- RTL: the pictogram rides the title row and mirrors with it.
+- **[AUTH · none — visual states only]**
+- PASS/FAIL:
