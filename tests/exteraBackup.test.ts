@@ -37,19 +37,23 @@ afterEach(() => {
 const FLUSH = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('exteraless .extera backup (EtgBackup contract)', () => {
-  it('the message-menu toggles round-trip under their Android aliases (packet 055)', () => {
+  it('the message-menu toggles round-trip under their Android aliases (packet 055; the no-op keys joined in 088)', () => {
     const root = {exteraconfig: {showSaveMessageButton: true, showCopyPhotoButton: true, showReportButton: true, showDetailsButton: true}};
     const applied = applyExteraBackup(root);
-    expect(applied.applied).toBe(3);
-    expect(applied.unsupported).toEqual(['showDetailsButton']);
+    // * the stored no-op keys (showMessageDetails/showViewHistory) are
+    // * recognized like their siblings: the store holds them, nothing reads
+    // * them yet — the imported value is a documented no-op
+    expect(applied.applied).toBe(4);
+    expect(applied.unsupported).toEqual([]);
     expect(exterayondSettings.showAddToSavedMessages).toBe(true);
     expect(exterayondSettings.CopyPhoto).toBe(true);
     expect(exterayondSettings.showReport).toBe(true);
+    expect(exterayondSettings.showMessageDetails).toBe(true);
     const exported = JSON.parse(etgBackup.buildBackup(false, exterayondSettings));
     expect(exported.exteraconfig.showSaveMessageButton).toBe(true);
     expect(exported.exteraconfig.showCopyPhotoButton).toBe(true);
     expect(exported.exteraconfig.showReportButton).toBe(true);
-    expect(exported.exteraconfig).not.toHaveProperty('showDetailsButton');
+    expect(exported.exteraconfig.showDetailsButton).toBe(true);
   });
 
   it('uses the Android boolean aliases for MD3 sliders/switches and rejects non-booleans', () => {
@@ -393,6 +397,82 @@ describe('exteraless .extera backup (EtgBackup contract)', () => {
       expect(result.applied).toBe(0);
       expect(exterayondSettings.OEChatsStickerShape).toBe(2);
     }
+  });
+
+  it('exports the double-tap actions through Android\'s exteraGram remap tables (packet 089)', () => {
+    // * EtgBackup.java:421-426, the tables verbatim: exteraGram numbers the
+    // * actions differently from the Nagram DoubleTap enum, and only the
+    // * common actions enter the format — a web-only value exports nothing
+    const incomingPairs: Array<[number, number | undefined]> = [
+      [0, 0], [1, 1], [2, 1], [3, 8], [4, 2], [5, 5], [6, 6], [10, 7],
+      // * repeat-as-copy, edit, the LLM translate, forward, download
+      [7, undefined], [8, undefined], [9, undefined], [11, undefined], [12, undefined]
+    ];
+    for(const [ours, etg] of incomingPairs) {
+      setExterayondSetting('DoubleTapAction', ours);
+      const parsed = JSON.parse(etgBackup.buildBackup(false, exterayondSettings as typeof OE_DEFAULTS & Record<string, boolean | number>));
+      expect(parsed.exteraconfig.doubleTapAction).toBe(etg);
+    }
+    // * the outgoing table keeps edit (ours 8 ↔ etg 5) and save (ours 5 ↔ etg 6) distinct
+    const outgoingPairs: Array<[number, number | undefined]> = [
+      [0, 0], [1, 1], [2, 1], [3, 9], [4, 2], [5, 6], [6, 7], [8, 5], [10, 8],
+      [7, undefined], [9, undefined], [11, undefined], [12, undefined]
+    ];
+    for(const [ours, etg] of outgoingPairs) {
+      setExterayondSetting('DoubleTapActionOut', ours);
+      const parsed = JSON.parse(etgBackup.buildBackup(false, exterayondSettings as typeof OE_DEFAULTS & Record<string, boolean | number>));
+      expect(parsed.exteraconfig.doubleTapActionOutOwner).toBe(etg);
+    }
+    setExterayondSetting('DoubleTapAction', OE_DEFAULTS.DoubleTapAction);
+    setExterayondSetting('DoubleTapActionOut', OE_DEFAULTS.DoubleTapActionOut);
+  });
+
+  it('imports the double-tap actions through the remap tables and reports the untransferable values', () => {
+    // * exteraGram's values map into the Nagram enum; etg 1 "reactions"
+    // * imports as SHOW_REACTIONS — Android's own lossy pair (2 shares it)
+    const incoming: Array<[number, number]> = [[0, 0], [1, 2], [2, 4], [5, 5], [6, 6], [7, 10], [8, 3]];
+    for(const [etg, ours] of incoming) {
+      const result = applyExteraBackup({[SECTION_EXTERA]: {doubleTapAction: etg}});
+      expect(result.applied).toBe(1);
+      expect(exterayondSettings.DoubleTapAction).toBe(ours);
+      expect(result.unsupported).not.toContain('doubleTapAction');
+    }
+    const outgoing: Array<[number, number]> = [[0, 0], [1, 2], [2, 4], [5, 8], [6, 5], [7, 6], [8, 10], [9, 3]];
+    for(const [etg, ours] of outgoing) {
+      const result = applyExteraBackup({[SECTION_EXTERA]: {doubleTapActionOutOwner: etg}});
+      expect(result.applied).toBe(1);
+      expect(exterayondSettings.DoubleTapActionOut).toBe(ours);
+    }
+    // * etg 3/4 have no Nagram counterpart (Android's -1 "nothing to
+    // * transfer"): the web reports them unsupported instead of Android's
+    // * silent drop, and the stored action never moves
+    setExterayondSetting('DoubleTapAction', 4);
+    setExterayondSetting('DoubleTapActionOut', 8);
+    const result = applyExteraBackup({[SECTION_EXTERA]: {doubleTapAction: 3, doubleTapActionOutOwner: 4}});
+    expect(result.applied).toBe(0);
+    expect(exterayondSettings.DoubleTapAction).toBe(4);
+    expect(exterayondSettings.DoubleTapActionOut).toBe(8);
+    expect(result.unsupported).toContain('doubleTapAction');
+    expect(result.unsupported).toContain('doubleTapActionOutOwner');
+    // * outside exteraGram's own ranges (0..8 / 0..9), or a wrong shape:
+    // * rejected like an untrusted file, before the remap runs
+    for(const bad of [-1, 9, 1.5, '2', null]) {
+      expect(applyExteraBackup({[SECTION_EXTERA]: {doubleTapAction: bad}}).applied).toBe(0);
+      expect(exterayondSettings.DoubleTapAction).toBe(4);
+    }
+    for(const bad of [-1, 10, 2.5, true]) {
+      expect(applyExteraBackup({[SECTION_EXTERA]: {doubleTapActionOutOwner: bad}}).applied).toBe(0);
+      expect(exterayondSettings.DoubleTapActionOut).toBe(8);
+    }
+    setExterayondSetting('DoubleTapAction', OE_DEFAULTS.DoubleTapAction);
+    setExterayondSetting('DoubleTapActionOut', OE_DEFAULTS.DoubleTapActionOut);
+  });
+
+  it('counts the double-tap keys as known since the remap tables landed (packet 089)', () => {
+    const read = etgBackup.readBackup(JSON.stringify({[SECTION_EXTERA]: {doubleTapAction: 2, doubleTapActionOutOwner: 5}}));
+    expect(read).not.toBeNull();
+    expect(read!.knownCount).toBe(2);
+    expect(read!.unsupported).toEqual([]);
   });
 
   it('leaves the ChatsConfig toggles EtgBackup never carries out of the format', () => {

@@ -58,14 +58,16 @@ export const KNOWN_UNSUPPORTED_KEYS: string[] = [
   'showOnlineStatus',
   // * showCopyPhotoButton / showSaveMessageButton / showReportButton moved to
   // * SUPPORTED (packet 055)
-  'showClearButton', 'showHistoryButton',
-  'showDetailsButton', 'groupMessageMenu', 'extendedFramesPerSecond', 'cameraStabilization',
+  'showClearButton',
+  'groupMessageMenu', 'extendedFramesPerSecond', 'cameraStabilization',
   'cameraMirrorMode', 'rememberLastUsedCamera', 'startWithWideAngleCamera', 'staticZoom',
   'preferOriginalQuality', 'swipeToPip', 'unmuteWithVolumeButtons',
   'useSystemIconShape', 'useGoogleCrashlytics',
   'inAppVibration', 'titleText', 'downloadSpeedBoost', 'tabletMode', 'glassOutlineStyle',
   'doubleTapSeekDuration', 'cameraType', 'videoMessagesCamera',
-  'translationProvider', 'tabIcons', 'doubleTapAction', 'doubleTapActionOutOwner',
+  // * doubleTapAction / doubleTapActionOutOwner moved to SUPPORTED (packet 089):
+  // * Android's EtgBackup DOES export them, under its exteraGram remap tables
+  'translationProvider', 'tabIcons',
   'predictiveBackIntensity', 'flashWarmth', 'flashIntensity',
   'dividerStyle', 'bottomNavigationBarMode',
   'unlimitedRecentStickers', 'quickAdminShortcuts',
@@ -103,6 +105,38 @@ const isPillsLayout = (value: string): boolean => {
   }
 
   return seen.size <= 100;
+};
+
+/**
+ * Android's double-tap remap tables (EtgBackup.java:421-426), the numbers
+ * verbatim. exteraGram numbers the double-tap actions differently from the
+ * Nagram `DoubleTap` enum the web store keeps (0..12), and the sets do not
+ * match, so only the common actions transfer:
+ * - `toOurs` indexes by exteraGram's value; Android's -1 ("nothing to
+ *   transfer") becomes `null` — the import reports such a value as
+ *   unsupported instead of Android's silent drop (Android counts it applied),
+ *   per the module contract. The entry's 0..8 / 0..9 range check runs first,
+ *   so a validated value is always inside the table.
+ * - `toEtg` maps our value → exteraGram's; a value outside the pairs exports
+ *   nothing (Android's reader returns null), so the incoming side's
+ *   web-only values — the LLM translate, repeat-as-copy, edit, forward,
+ *   download — never enter the format half-mapped.
+ */
+const DOUBLE_TAP_REMAP = {
+  incoming: {
+    toOurs: [0, 2, 4, -1, -1, 5, 6, 10, 3],
+    toEtg: {0: 0, 1: 1, 2: 1, 3: 8, 4: 2, 5: 5, 6: 6, 10: 7} as {[ours: number]: number}
+  },
+  outgoing: {
+    toOurs: [0, 2, 4, -1, -1, 8, 5, 6, 10, 3],
+    toEtg: {0: 0, 1: 1, 2: 1, 3: 9, 4: 2, 5: 6, 6: 7, 8: 5, 10: 8} as {[ours: number]: number}
+  }
+};
+
+/** Android remap's import half: the -1 sentinel (and any out-of-table value) leaves the key unapplied. */
+const remapToOurs = (table: readonly number[], etg: number): number | null => {
+  const ours = table[etg];
+  return ours !== undefined && ours >= 0 ? ours : null;
 };
 
 const SUPPORTED: SupportedEntry[] = [
@@ -162,12 +196,15 @@ const SUPPORTED: SupportedEntry[] = [
   // * Android maps NekoConfig.autoPauseVideo; the persisted key is the contract
   {section: SECTION_EXTERA, key: 'pauseOnMinimizeVideo', kind: 'bool', storeKey: 'AutoPauseVideo'},
   {section: SECTION_EXTERA, key: 'hideStickerTime', kind: 'bool', storeKey: 'HideTimeForSticker'},
-  // * the message-menu toggles with a web item behind them (packet 055);
-  // * showDetailsButton/showHistoryButton stay unsupported (no details popup,
-  // * and the edit history waits on AYU-02)
+  // * the message-menu toggles with a web item behind them (packet 055)
   {section: SECTION_EXTERA, key: 'showSaveMessageButton', kind: 'bool', storeKey: 'showAddToSavedMessages'},
   {section: SECTION_EXTERA, key: 'showCopyPhotoButton', kind: 'bool', storeKey: 'CopyPhoto'},
   {section: SECTION_EXTERA, key: 'showReportButton', kind: 'bool', storeKey: 'showReport'},
+  // * the stored no-op keys (the details popup and the edit history wait on
+  // * their web surfaces): Android exports the flags, the store holds them,
+  // * the applied value is a documented no-op — recognized, not "unsupported"
+  {section: SECTION_EXTERA, key: 'showDetailsButton', kind: 'bool', storeKey: 'showMessageDetails'},
+  {section: SECTION_EXTERA, key: 'showHistoryButton', kind: 'bool', storeKey: 'showViewHistory'},
   {section: SECTION_EXTERA, key: 'stickerSize', kind: 'float', min: 4, max: 20, storeKey: 'stickerSize'},
   {section: SECTION_EXTERA, key: 'stickerTimeMode', kind: 'int', min: 0, max: 2, storeKey: 'StickerTimeMode'},
   {section: SECTION_EXTERA, key: 'bottomButton', kind: 'int', min: 0, max: 2, storeKey: 'OEChatsBottomButton'},
@@ -175,6 +212,14 @@ const SUPPORTED: SupportedEntry[] = [
   // * (mode 2); the middle mode never round-trips through the format
   {section: SECTION_EXTERA, key: 'tabCounter', kind: 'bool', storeKey: 'IgnoreUnreadCount', toEtg: (value) => value !== 2, toOurs: (value) => value ? 0 : 2},
   {section: SECTION_EXTERA, key: 'stickerShape', kind: 'int', min: 0, max: 2, storeKey: 'OEChatsStickerShape'},
+  // * the double-tap actions through Android's exteraGram remap tables above
+  // * (EtgBackup.java:421-426), next to stickerShape like the Java source
+  {section: SECTION_EXTERA, key: 'doubleTapAction', kind: 'int', min: 0, max: 8, storeKey: 'DoubleTapAction',
+    toEtg: (ours) => DOUBLE_TAP_REMAP.incoming.toEtg[ours] ?? null,
+    toOurs: (etg) => remapToOurs(DOUBLE_TAP_REMAP.incoming.toOurs, etg)},
+  {section: SECTION_EXTERA, key: 'doubleTapActionOutOwner', kind: 'int', min: 0, max: 9, storeKey: 'DoubleTapActionOut',
+    toEtg: (ours) => DOUBLE_TAP_REMAP.outgoing.toEtg[ours] ?? null,
+    toOurs: (etg) => remapToOurs(DOUBLE_TAP_REMAP.outgoing.toOurs, etg)},
   {section: SECTION_EXTERA, key: 'avatarCorners', kind: 'float', min: 0, max: 28, storeKey: 'OEAppearanceAvatarCorners'},
   {section: SECTION_EXTERA, key: 'sectionRadius', kind: 'float', min: 0, max: 28, storeKey: 'OEAppearanceSectionRadius'},
   // * Android exports SharedConfig.bubbleRadius under the same name in the
@@ -319,7 +364,10 @@ export const etgBackup = {
   /** Reads and decrypts a `.extera` body; plain JSON is accepted too. */
   readBackup(content: string): ReadBackupResult | null {
     try {
-      const text = invisibleEncryptor.isEncrypted(content) ? invisibleEncryptor.decode(content) : content;
+      // * Android's reader strips line breaks before the encrypted check —
+      // * a re-saved file's trailing newline must not break the decrypt
+      const stripped = content.replace(/\r?\n/g, '');
+      const text = invisibleEncryptor.isEncrypted(stripped) ? invisibleEncryptor.decode(stripped) : stripped;
       const parsed = JSON.parse(text);
       if(!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
 

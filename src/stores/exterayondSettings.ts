@@ -37,7 +37,13 @@ export const OE_FAB_SQUIRCLE_RADIUS = '28.571%';
  * message bubble (the bubble's big corner radius).
  */
 export const OE_STICKER_SHAPE_ROUNDED_RADIUS = '6px';
-export const OE_STICKER_SHAPE_BUBBLE_RADIUS = '15px';
+/**
+ * The "as the bubble" sticker shape follows the live bubbleRadius: the var
+ * sits on the root next to the sticker radius, so the slider moves both —
+ * the literal is only the stock fallback (the bubble's big corner at the
+ * stock radius 17).
+ */
+export const OE_STICKER_SHAPE_BUBBLE_RADIUS = 'var(--oe-bubble-radius, 15px)';
 
 /** Android `PlayerStyle.COVER_SIZE_MIN`/`COVER_SIZE_MAX` (a percentage). */
 export const OE_PLAYER_COVER_SIZE_MIN = 60;
@@ -349,10 +355,10 @@ export const OE_DEFAULTS = {
    * send the quick reaction): the CHAT-10 double-tap action by direction.
    * The enum is `xyz.nextalone.nagram.helper.DoubleTap`'s (0..12); the values
    * the web cannot back with a real handler resolve to a no-op, never faked.
-   * Android EtgBackup DOES export both under its exteraGram remap tables
-   * (`doubleTapAction`, `doubleTapActionOutOwner`); the web's backup keeps
-   * them reported as unsupported until those tables are ported — never
-   * applied half-mapped.
+   * Android EtgBackup exports both under its exteraGram remap tables
+   * (`doubleTapAction`, `doubleTapActionOutOwner`, EtgBackup.java:421-426) —
+   * the web backup carries the same tables (packet 089), so only the common
+   * actions transfer and a web-only value exports nothing.
    */
   DoubleTapAction: 1,
   DoubleTapActionOut: 1,
@@ -561,6 +567,30 @@ const STORAGE_KEY = 'exterayond-settings';
 /** The pre-rename key; its record migrates to STORAGE_KEY once, on load. */
 const LEGACY_STORAGE_KEY = 'exterayond-exteraless-settings';
 
+/**
+ * Parses a persisted record with the boot's validation: unknown keys are
+ * dropped, a wrong-typed or out-of-range value falls back to its default —
+ * an untrusted record never applies raw. Every known key is answered, an
+ * absent one with its default: the record, not the tab, is the shared truth.
+ */
+const parsePersisted = (raw: string): Partial<ExterayondSettings> => {
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch(e) {
+    return {};
+  }
+
+  const out = {} as Record<ExterayondSettingsKey, boolean | number | string>;
+  if(parsed && typeof parsed === 'object') {
+    for(const key of Object.keys(OE_DEFAULTS) as ExterayondSettingsKey[]) {
+      out[key] = clampAnySetting(key, parsed[key]);
+    }
+  }
+
+  return out as Partial<ExterayondSettings>;
+};
+
 const readPersisted = (): Partial<ExterayondSettings> => {
   let raw: string;
   try {
@@ -579,25 +609,7 @@ const readPersisted = (): Partial<ExterayondSettings> => {
     return {};
   }
 
-  if(!raw) {
-    return {};
-  }
-
-  let parsed: any;
-  try {
-    parsed = JSON.parse(raw);
-  } catch(e) {
-    return {};
-  }
-
-  const out = {} as Record<ExterayondSettingsKey, boolean | number | string>;
-  if(parsed && typeof parsed === 'object') {
-    for(const key of Object.keys(OE_DEFAULTS) as ExterayondSettingsKey[]) {
-      out[key] = clampAnySetting(key, parsed[key]);
-    }
-  }
-
-  return out as Partial<ExterayondSettings>;
+  return raw ? parsePersisted(raw) : {};
 };
 
 const persist = (settings: ExterayondSettings) => {
@@ -728,27 +740,58 @@ export const isExterayondGhostModeActive = () => {
 };
 
 /**
+ * The worker-push coalescing: a multi-key write — the master toggle's batch,
+ * a cross-tab apply — touches up to five worker-read keys, and each write
+ * would push on its own. Inside the callback the pushes defer, and one
+ * synchronous flush at the end carries the final state. The flush stays
+ * synchronous on purpose: the worker processes the manager calls in order,
+ * and GHOST-04's status rewrite reads the flags when the request arrives —
+ * a microtask queue would put the push behind the toggle's own status
+ * packet and let it leave with stale flags.
+ */
+let ghostPushDeferDepth = 0;
+let ghostPushDeferred = false;
+
+const runWithGhostPushCoalesced = <T>(write: () => T): T => {
+  ghostPushDeferDepth++;
+  try {
+    return write();
+  } finally {
+    ghostPushDeferDepth--;
+    if(ghostPushDeferDepth === 0 && ghostPushDeferred) {
+      ghostPushDeferred = false;
+      pushGhostFlags();
+    }
+  }
+};
+
+/**
  * The master toggle (GHOST-01, Android `NekoConfig.setGhostMode`):
  * unlocked essentials move to the ghost (on) or stock (off) targets, the
  * locked ones keep their values; each change pushes the flags into the
  * worker. Android's `toggleGhostMode` then sends a status request — an
  * *online* packet: entering the mode the just-enabled suppression rewrites
- * it to offline (GHOST-04), leaving it really goes online.
+ * it to offline (GHOST-04), leaving it really goes online. Returns whether
+ * anything actually moved (a fully-locked toggle is a no-op, and the UI's
+ * success toast must not fire for it — Android shakes instead).
  */
-export const setExterayondGhostMode = (enabled: boolean) => {
+export const setExterayondGhostMode = (enabled: boolean): boolean => {
   const {flags, locked} = ghostModeState();
   const next = applyGhostMode(flags, locked, enabled);
   // * essentials already at their target (all locked, or the mode re-set)
   // * store nothing — and Android's status request rides a real move too,
   // * not a no-op toggle
-  let anyChanged = false;
-  batch(() => {
-    for(const key of GHOST_FLAG_KEYS) {
-      if(exterayondSettings[key] !== next[key]) {
-        anyChanged = true;
-        setExterayondSetting(key, next[key] as never);
+  const anyChanged = runWithGhostPushCoalesced(() => {
+    let changed = false;
+    batch(() => {
+      for(const key of GHOST_FLAG_KEYS) {
+        if(exterayondSettings[key] !== next[key]) {
+          changed = true;
+          setExterayondSetting(key, next[key] as never);
+        }
       }
-    }
+    });
+    return changed;
   });
 
   if(anyChanged) {
@@ -758,6 +801,8 @@ export const setExterayondGhostMode = (enabled: boolean) => {
       // * no managers yet: the next natural status ping applies the rewrite
     }
   }
+
+  return anyChanged;
 };
 
 if(typeof document !== 'undefined') {
@@ -771,7 +816,7 @@ if(typeof document !== 'undefined') {
  * The settings whose consumers re-read the store from this event; no new bus,
  * no effect per row or message.
  */
-const LIVE_EVENT_KEYS: ExterayondSettingsKey[] = ['DisableNumberRounding', 'IgnoreUnreadCount', 'HideAllTab', 'OEAppearanceWallpaperPattern', 'OEAppearanceThemePalette', 'OEPillActivePills', 'OEPillHiddenPills', 'OEAppearanceMainMenuLayout', 'HideStoriesFromHeader', 'silentMessageByDefault', 'OEAppearanceAttachedSidebar', 'MediaViewerMenuItemForward'];
+const LIVE_EVENT_KEYS: ExterayondSettingsKey[] = ['DisableNumberRounding', 'IgnoreUnreadCount', 'HideAllTab', 'OEAppearanceWallpaperPattern', 'OEAppearanceThemePalette', 'OEPillActivePills', 'OEPillHiddenPills', 'OEAppearanceMainMenuLayout', 'HideStoriesFromHeader', 'silentMessageByDefault', 'OEAppearanceAttachedSidebar', 'MediaViewerMenuItemForward', 'hideGroupSticker'];
 
 /** Sets one setting (validated) and writes the whole record back. */
 const setExterayondSetting = <K extends ExterayondSettingsKey>(key: K, value: ExterayondSettingValue<K>) => {
@@ -786,7 +831,15 @@ const setExterayondSetting = <K extends ExterayondSettingsKey>(key: K, value: Ex
     pushSortByUnread();
   }
   if((GHOST_WORKER_KEYS as readonly ExterayondSettingsKey[]).includes(key) && previous !== clamped) {
-    pushGhostFlags();
+    // * a multi-key write (the master toggle's batch, a cross-tab apply)
+    // * defers its pushes — runWithGhostPushCoalesced folds them into ONE
+    // * push carrying the final state, so the worker never sees an
+    // * intermediate half-ghost state; a plain single-key write pushes now
+    if(ghostPushDeferDepth > 0) {
+      ghostPushDeferred = true;
+    } else {
+      pushGhostFlags();
+    }
   }
   // * GHOST-11: the topbar indicator is vanilla DOM, so the store announces
   // * the ghost state the way the live keys do
@@ -831,6 +884,49 @@ const resetExterayondSettings = () => {
     rootScope.dispatchEventSingle('exterayond_ghost_mode_changed', {key: 'reset', value: false});
   }
 };
+
+/**
+ * Cross-tab sync: the native `storage` event is the whole surface — no
+ * BroadcastChannel, no server. It fires only in the OTHER tabs of the same
+ * origin, so a tab's own writes never echo back here. The remote record is
+ * re-read with the boot's validation (a racing write fires its own event and
+ * the newest record wins — a stale event re-reads into a no-op), and only
+ * the keys that actually moved are applied through `setExterayondSetting`:
+ * the same contract a local write uses. The live keys announce tab-side, the
+ * locks announce, the send parameters and the ghost flags push worker-side
+ * (one coalesced push per apply), and a remote reset mirrors the reset's own
+ * announcement shape. A record identical to the memory — the legacy-key
+ * migration write of another tab, the write-back of a tab applying this
+ * tab's event — moves nothing and announces nothing, which is what keeps
+ * the tabs from echoing each other forever.
+ */
+const onStorageChanged = (event: StorageEvent) => {
+  if(event.key !== STORAGE_KEY) return;
+  const remote = readPersisted();
+  // * the record's only remover is the store's own reset, so a removal is
+  // * mirrored as one: the same per-key live announcements, one 'reset'
+  // * ghost event, the worker keys re-pushed. The mirror's own re-remove
+  // * stays silent everywhere — a no-op removal fires no event, and the
+  // * original tab re-reads into a record it already matches
+  if(event.newValue === null && !globalThis.localStorage?.getItem(STORAGE_KEY)) {
+    resetExterayondSettings();
+    return;
+  }
+
+  runWithGhostPushCoalesced(() => {
+    for(const key of Object.keys(OE_DEFAULTS) as ExterayondSettingsKey[]) {
+      const target = remote[key] ?? OE_DEFAULTS[key];
+      if(exterayondSettings[key] !== target) {
+        setExterayondSetting(key, target as never);
+      }
+    }
+  });
+};
+
+if(typeof document !== 'undefined') {
+  // * the cross-tab sync above rides the window's own storage event
+  hotListen(import.meta.hot, window, 'storage', onStorageChanged);
+}
 
 const useExterayondSettings = () => [exterayondSettings, setExterayondSetting] as const;
 
@@ -1271,7 +1367,9 @@ if(typeof document !== 'undefined') {
         style.setProperty('--oe-section-radius', sectionRadius);
       }
 
-      classList.toggle('oe-separate-headers', exterayondSettings.OEAppearanceSeparateHeaders);
+      // * OEAppearanceSeparateHeaders has no root class: `Section` owns the
+      // * behavior per element (`is-separated`, driven from the store
+      // * directly in section.tsx)
 
       classList.toggle('oe-remove-message-tail', exterayondSettings.OEChatsRemoveMessageTail);
 

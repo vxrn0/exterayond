@@ -595,6 +595,153 @@ describe('exterayond settings store', () => {
     rootScope.managers = originalManagers;
   });
 
+  // * the cross-tab sync rides the window's own storage event: a test
+  // * simulates ANOTHER tab by writing the stubbed record and dispatching
+  const storageEvent = () => new StorageEvent('storage', {
+    key: STORAGE_KEY,
+    newValue: localStorageStub.values[STORAGE_KEY] ?? null
+  });
+
+  test('a remote tab\'s write applies the moved keys through the store\'s contracts (cross-tab sync)', async() => {
+    const {exterayondSettings, setExterayondSetting} = await loadStore();
+    const rootScope = (await import('@lib/rootScope')).default;
+    // * a local state to differ from
+    setExterayondSetting('OEAppearanceAttachedSidebar', true);
+    setExterayondSetting('HideStoriesFromHeader', false);
+    const payloads: any[] = [];
+    const originalManagers = rootScope.managers;
+    rootScope.managers = {
+      appMessagesManager: {setExterayondGhostFlags: (flags: any) => payloads.push(flags), setSortByUnread: vi.fn()}
+    } as any;
+    const liveEvents: string[] = [];
+    const liveListener = ({key}: {key: string}) => liveEvents.push(key);
+    rootScope.addEventListener('exterayond_settings_updated', liveListener);
+
+    // * another tab wrote: two live keys moved back to stock, the send
+    // * parameter moved away from its default — the record is the shared truth
+    localStorageStub.setItem(STORAGE_KEY, JSON.stringify({
+      OEAppearanceAttachedSidebar: false,
+      HideStoriesFromHeader: true,
+      silentMessageByDefault: true
+    }));
+    window.dispatchEvent(storageEvent());
+    expect(exterayondSettings.OEAppearanceAttachedSidebar).toBe(false);
+    expect(exterayondSettings.HideStoriesFromHeader).toBe(true);
+    expect(exterayondSettings.silentMessageByDefault).toBe(true);
+    // * the live keys announced tab-side (GHOST-08's key rides both channels:
+    // * the send menu rebuilds on the live event, the hook reads the push) —
+    // * the same split a local write uses
+    expect(liveEvents).toEqual(['HideStoriesFromHeader', 'OEAppearanceAttachedSidebar', 'silentMessageByDefault']);
+    expect(payloads[payloads.length - 1].silentMessageByDefault).toBe(true);
+
+    rootScope.removeEventListener('exterayond_settings_updated', liveListener);
+    rootScope.managers = originalManagers;
+  });
+
+  test('a record identical to the memory announces nothing (the self-write echo guard)', async() => {
+    const {setExterayondSetting} = await loadStore();
+    const rootScope = (await import('@lib/rootScope')).default;
+    setExterayondSetting('OEAppearanceAttachedSidebar', true);
+    const payloads: any[] = [];
+    const originalManagers = rootScope.managers;
+    rootScope.managers = {
+      appMessagesManager: {setExterayondGhostFlags: (flags: any) => payloads.push(flags), setSortByUnread: vi.fn()}
+    } as any;
+    const liveEvents: string[] = [];
+    const liveListener = ({key}: {key: string}) => liveEvents.push(key);
+    rootScope.addEventListener('exterayond_settings_updated', liveListener);
+    const ghostEvents: string[] = [];
+    const ghostListener = ({key}: {key: string}) => ghostEvents.push(key);
+    rootScope.addEventListener('exterayond_ghost_mode_changed', ghostListener);
+
+    // * the record equals the memory: another tab's write-back and the
+    // * legacy-key migration write of an equal record look like this —
+    // * nothing moved, nothing announced, no push, no echo loop
+    window.dispatchEvent(storageEvent());
+    expect(liveEvents).toEqual([]);
+    expect(ghostEvents).toEqual([]);
+    expect(payloads).toEqual([]);
+
+    rootScope.removeEventListener('exterayond_settings_updated', liveListener);
+    rootScope.removeEventListener('exterayond_ghost_mode_changed', ghostListener);
+    rootScope.managers = originalManagers;
+  });
+
+  test('a remote master-toggle move pushes the worker once with the final state (cross-tab coalescing)', async() => {
+    const {exterayondSettings, isExterayondGhostModeActive} = await loadStore();
+    const rootScope = (await import('@lib/rootScope')).default;
+    const payloads: any[] = [];
+    const originalManagers = rootScope.managers;
+    rootScope.managers = {
+      appMessagesManager: {setExterayondGhostFlags: (flags: any) => payloads.push(flags), setSortByUnread: vi.fn()}
+    } as any;
+
+    // * another tab toggled Ghost Mode on: its record carries the five
+    // * essentials in their ghost state
+    localStorageStub.setItem(STORAGE_KEY, JSON.stringify({
+      sendReadMessagePackets: false,
+      sendReadStoriesPackets: false,
+      sendOnlinePackets: false,
+      sendUploadProgress: false,
+      sendOfflinePacketAfterOnline: true
+    }));
+    window.dispatchEvent(storageEvent());
+    // * one coalesced push carrying the final state, not five per-key pushes
+    expect(payloads).toHaveLength(1);
+    expect(payloads[0]).toMatchObject({sendReadMessagePackets: false, sendOfflinePacketAfterOnline: true});
+    expect(isExterayondGhostModeActive()).toBe(true);
+
+    rootScope.managers = originalManagers;
+  });
+
+  test('a remote reset mirrors the reset: defaults, one reset ghost event, the worker re-pushed', async() => {
+    const {exterayondSettings, setExterayondSetting} = await loadStore();
+    const rootScope = (await import('@lib/rootScope')).default;
+    setExterayondSetting('sendReadMessagePackets', false);
+    setExterayondSetting('OEAppearanceAttachedSidebar', true);
+    const payloads: any[] = [];
+    const originalManagers = rootScope.managers;
+    rootScope.managers = {
+      appMessagesManager: {setExterayondGhostFlags: (flags: any) => payloads.push(flags), setSortByUnread: vi.fn()}
+    } as any;
+    const ghostEvents: string[] = [];
+    const ghostListener = ({key}: {key: string}) => ghostEvents.push(key);
+    rootScope.addEventListener('exterayond_ghost_mode_changed', ghostListener);
+
+    // * the record's removal is another tab's reset — the only remover of
+    // * this key — so the event mirrors the reset's own announcements
+    localStorageStub.removeItem(STORAGE_KEY);
+    window.dispatchEvent(new StorageEvent('storage', {key: STORAGE_KEY, newValue: null}));
+    expect(exterayondSettings.sendReadMessagePackets).toBe(true);
+    expect(exterayondSettings.OEAppearanceAttachedSidebar).toBe(false);
+    // * the reset's ghost contract: one 'reset' event, not per-key events
+    expect(ghostEvents).toEqual(['reset']);
+    // * the flags re-pushed once, at defaults
+    expect(payloads).toHaveLength(1);
+    expect(payloads[0].sendReadMessagePackets).toBe(true);
+
+    rootScope.removeEventListener('exterayond_ghost_mode_changed', ghostListener);
+    rootScope.managers = originalManagers;
+  });
+
+  test('a storage event for another key is ignored', async() => {
+    const {exterayondSettings} = await loadStore();
+    const rootScope = (await import('@lib/rootScope')).default;
+    const liveEvents: string[] = [];
+    const liveListener = ({key}: {key: string}) => liveEvents.push(key);
+    rootScope.addEventListener('exterayond_settings_updated', liveListener);
+
+    localStorageStub.setItem(STORAGE_KEY, JSON.stringify({HideStoriesFromHeader: false}));
+    // * other records of the app (and a whole-storage clear, key null) are
+    // * not the store's record — the handler never runs for them
+    window.dispatchEvent(new StorageEvent('storage', {key: 'exterayond-exteraless-settings', newValue: '{}'}));
+    window.dispatchEvent(new StorageEvent('storage', {key: null, newValue: null}));
+    expect(exterayondSettings.HideStoriesFromHeader).toBe(true);
+    expect(liveEvents).toEqual([]);
+
+    rootScope.removeEventListener('exterayond_settings_updated', liveListener);
+  });
+
   test('reset restores defaults and clears only the exterayond preferences record', async() => {
     const {OE_DEFAULTS, exterayondSettings, setExterayondSetting, resetExterayondSettings} = await loadStore();
     localStorageStub.setItem('unrelated-preferences', 'keep');

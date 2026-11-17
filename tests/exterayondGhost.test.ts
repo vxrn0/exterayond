@@ -420,6 +420,11 @@ describe('the store pushes the flags into the worker', () => {
     // * ...and Android's toggleGhostMode sends the online packet, which the
     // * just-enabled suppression rewrites to offline inside the manager
     expect(updateStatus).toHaveBeenCalledWith(false);
+    // * the coalesced flags push lands BEFORE the status request in the
+    // * worker's queue: GHOST-04's rewrite reads the flags when the request
+    // * arrives, so the flush must stay synchronous inside the toggle — a
+    // * microtask queue would send the packet behind the push, with stale flags
+    expect(setGhostFlags.mock.invocationCallOrder[0]).toBeLessThan(updateStatus.mock.invocationCallOrder[0]);
 
     // * leaving goes back to stock, still with the status request
     updateStatus.mockClear();
@@ -463,6 +468,9 @@ describe('the store pushes the flags into the worker', () => {
     // * gates read exactly that payload — every predicate must agree
     store.setExterayondGhostMode(true);
     expect(store.isExterayondGhostModeActive()).toBe(true);
+    // * one push per toggle: the batched essentials fold into a single
+    // * worker push carrying the final state, no intermediate half-ghost
+    expect(payloads.length).toBe(1);
     const entering = payloads[payloads.length - 1];
     expect(ghost.isGhostModeActive(entering)).toBe(true);
     expect(ghost.ghostSuppressesReadReceipts(entering)).toBe(true);
