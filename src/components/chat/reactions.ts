@@ -18,6 +18,7 @@ import {Accessor, Setter} from 'solid-js';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {hotListen} from '@helpers/hotModule';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import {exterayondSettings} from '@stores/exterayondSettings';
 
 
 const CLASS_NAME = 'reactions';
@@ -99,6 +100,27 @@ hotListen(import.meta.hot, rootScope, 'exterayond_settings_updated', ({key}) => 
     set.forEach((reactionsElement) => reactionsElement.refreshCounters());
   });
 });
+
+/** The peer kind the exteraless hide-reactions keys split by (private / broadcast channels / groups). */
+export const reactionsPeerKind = (peerId: PeerId): 'private' | 'channels' | 'groups' => {
+  // The peer is already in the UI mirror, as in Android's chat cache.
+  const chat = peerId.isUser() ? undefined : apiManagerProxy.getChat(peerId.toChatId());
+  const flags = (chat as {pFlags?: {broadcast?: boolean, megagroup?: boolean}})?.pFlags;
+  return peerId.isUser() ? 'private' : flags?.broadcast && !flags.megagroup ? 'channels' : 'groups';
+};
+
+/**
+ * The exteraless hide-reactions verdict for a peer — the three hub keys
+ * (Android's `disabledReactions()`), composed with the peer kind. The CSS
+ * half lives in `_reactions.scss` (the peer-kind class on the element); this
+ * predicate is for the gates that must consult the setting directly.
+ */
+export const isReactionsHiddenForPeer = (peerId: PeerId): boolean => {
+  const kind = reactionsPeerKind(peerId);
+  return kind === 'private' ? !!exterayondSettings.OEChatsHideReactionsPrivate :
+    kind === 'channels' ? !!exterayondSettings.OEChatsHideReactionsChannels :
+    !!exterayondSettings.OEChatsHideReactionsGroups;
+};
 
 export default class ReactionsElement extends HTMLElement {
   public static create() {
@@ -305,10 +327,7 @@ export default class ReactionsElement extends HTMLElement {
 
   private syncChatKindClass() {
     const peerId = this.context.peerId;
-    // The rendered peer is already in the UI mirror, as in Android's chat cache.
-    const chat = peerId.isUser() ? undefined : apiManagerProxy.getChat(peerId.toChatId());
-    const flags = (chat as {pFlags?: {broadcast?: boolean, megagroup?: boolean}})?.pFlags;
-    const kind = peerId.isUser() ? 'private' : flags?.broadcast && !flags.megagroup ? 'channels' : 'groups';
+    const kind = reactionsPeerKind(peerId);
     if(kind !== this.oeChatKind) {
       if(this.oeChatKind) this.classList.remove('oe-reactions-' + this.oeChatKind);
       this.oeChatKind = kind;

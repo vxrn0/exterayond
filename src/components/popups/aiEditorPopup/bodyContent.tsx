@@ -3,6 +3,7 @@ import {AutoHeight} from '@components/autoHeight';
 import Button from '@components/buttonTsx';
 import SelectedEffect from '@components/chat/selectedEffect';
 import SendContextMenu from '@components/chat/sendContextMenu';
+import {exterayondSettings} from '@stores/exterayondSettings';
 import {IconTsx} from '@components/iconTsx';
 import showScheduleSendingPopup from '@components/popups/scheduleSendingPopup';
 import {usePopupContext} from '@components/popups/indexTsx';
@@ -209,7 +210,8 @@ export const AiEditorPopupBodyContent = () => {
             if(!isScheduled) {
               onMount(() => {
                 const sendMenu = new SendContextMenu({
-                  onSilentClick: () => sendResult({silent: true}),
+                  // * GHOST-08: the shared menu item reads the flipped direction
+                  onSilentClick: () => sendResult({silent: !exterayondSettings.silentMessageByDefault}),
                   onScheduleClick: openScheduleAndSend,
                   onSendWhenOnlineClick: () => sendResult({scheduleDate: SEND_WHEN_ONLINE_TIMESTAMP}),
                   onOpen: canSendResult,

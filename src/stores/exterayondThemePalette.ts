@@ -1,5 +1,6 @@
 import {hexToRgb, hslaToRgba, rgbaToHsla} from '@helpers/color';
 import themeController from '@helpers/themeController';
+import customProperties from '@helpers/dom/customProperties';
 import {hotListen} from '@helpers/hotModule';
 import rootScope from '@lib/rootScope';
 import type {WallPaper} from '@layer';
@@ -232,11 +233,33 @@ export const paletteTintSource = (): string | undefined => {
 
 const isDarkTheme = () => document.documentElement.classList.contains('night');
 
-const applyCurrentPalette = () => applyThemePalette(
-  exterayondSettings.OEAppearanceThemePalette,
-  isDarkTheme(),
-  paletteTintSource()
-);
+export const applyCurrentPalette = () => {
+  applyThemePalette(
+    exterayondSettings.OEAppearanceThemePalette,
+    isDarkTheme(),
+    paletteTintSource()
+  );
+  // * subtrees that opt into `.night` (popups over the media viewer,
+  // * stories, calls) resolve from the controller's mirror rule, which the
+  // * inline writes above don't reach — the palette surfaces ride the rule
+  // * while the override is dark and on
+  const enabled = exterayondSettings.OEAppearanceThemePalette as boolean;
+  const dark = isDarkTheme();
+  const values = resolveThemePaletteSurfaces(enabled, dark, paletteTintSource());
+  if(values) {
+    const overrides: {[key: string]: {value: string, rgb: string}} = {};
+    for(const key of THEME_PALETTE_SURFACE_KEYS) {
+      overrides[key] = {value: values[key], rgb: hexToRgb(values[key]).join(',')};
+    }
+    themeController.setNightMirrorOverrides(overrides);
+  } else {
+    themeController.setNightMirrorOverrides(undefined);
+  }
+  // * canvas consumers read CSS variables through the theme's color cache —
+  // * the palette's inline writes change those values without a
+  // * `theme_changed`, so the cache must not serve pre-toggle colors
+  customProperties.resetCache();
+};
 
 if(typeof document !== 'undefined') {
   // * `_setTheme` applies the theme colors first and dispatches afterwards,

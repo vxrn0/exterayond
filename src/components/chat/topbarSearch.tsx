@@ -1066,6 +1066,9 @@ export default function TopbarSearch(props: {
       forceCounter: true
     });
     reactionsElement.classList.remove('has-no-reactions');
+    // * the saved-tags strip is a picker, not a chat bubble — the exteraless
+    // * hide-reactions toggles must not hide it
+    reactionsElement.classList.add('oe-reactions-keep');
     reactionsElement.classList.add('topbar-search-left-reactions');
 
     // * reactions listener

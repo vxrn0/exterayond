@@ -22,7 +22,7 @@ export class CustomProperties {
     mediaSizes.addEventListener('resize', this.resetCache);
   }
 
-  protected resetCache = () => {
+  public resetCache = () => {
     this.computedStyle = undefined;
     const cache = this.cache;
     this.cache = {};

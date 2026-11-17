@@ -146,7 +146,7 @@ const ExterayondMainMenu = () => {
 
   return (
     <>
-      <Section name="Exterayond.MainMenu" caption="Exterayond.MainMenu.Info" />
+      <Section noContent name="Exterayond.MainMenu" caption="Exterayond.MainMenu.Info" />
       <VisibleItemsSection />
       <HiddenItemsSection />
       <Section>

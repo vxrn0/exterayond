@@ -24,6 +24,7 @@ import {
   setAllMd3Styles,
   useExterayondSettings
 } from '@stores/exterayondSettings';
+import {applyCurrentPalette} from '@stores/exterayondThemePalette';
 
 /**
  * The Appearance category of the exteraless Preferences hub. Every control is
@@ -101,6 +102,11 @@ const AccentColorSection = () => {
   const preview = (hex: string) => {
     previewed = true;
     themeController.applyTheme(themeController.buildAccentPresetTheme(buildCustomAccentPreset(parseInt(hex.slice(1), 16))));
+    // * the preview's applyTheme writes the whole surface family inline and
+    // * dispatches nothing — the palette would sit out the drag until the
+    // * commit's theme_changed; re-apply it on top so the chrome stays
+    // * palette-dark while the accent previews through the untinted surfaces
+    applyCurrentPalette();
   };
 
   const commit = () => {
@@ -235,7 +241,15 @@ const ExterayondAppearance = () => {
       <Section name="Exterayond.Md3" caption="Exterayond.Md3.Info">
         <Row>
           <Row.CheckboxFieldToggle>
-            <CheckboxFieldTsx toggle checked={getMd3StyleCount() > 0} onChange={setAllMd3Styles} />
+            {/* * the master reads "full set vs not": a partially-on state (the
+              * stock defaults already carry 3/8) shows unchecked and a click
+              * COMPLETES the set — a checked-then-partial display would trap
+              * the click direction; the x/8 subtitle carries the exact count */}
+            <CheckboxFieldTsx
+              toggle
+              checked={getMd3StyleCount() === 8}
+              onChange={(value) => setAllMd3Styles(value)}
+            />
           </Row.CheckboxFieldToggle>
           <Row.Title>{i18n('Exterayond.Md3')}</Row.Title>
           <Row.Subtitle>{getMd3StyleCount()}/8</Row.Subtitle>

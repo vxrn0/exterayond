@@ -4,8 +4,11 @@ import Row from '@components/rowTsx';
 import Section from '@components/section';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import {I18n, i18n, LangPackKey} from '@lib/langPack';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import {ROW_CHECKBOX_FIELD_TOGGLE_CLASS} from '@components/rowFieldClasses';
 import {toastNew} from '@components/toast';
 import {
+  ENGINE_JS,
   ENGINE_PYTHON,
   pluginsManager,
   PluginRecord
@@ -128,7 +131,7 @@ const PluginSettingsModels = (props: {record: PluginRecord}) => {
 
 const SETTINGS_MODEL_TYPES = new Set(['switch', 'selector', 'slider', 'input', 'text', 'edit_text', 'header', 'divider']);
 
-const PluginRow = (props: {record: PluginRecord}) => {
+const PluginRow = (props: {record: PluginRecord, onChanged: () => void}) => {
   const [expanded, setExpanded] = createSignal(false);
   const record = () => props.record;
   const effective = () => getEffectivePermissions(record().id);
@@ -142,7 +145,12 @@ const PluginRow = (props: {record: PluginRecord}) => {
 
   return (
     <>
-      <Row clickable={() => setExpanded(!expanded())}>
+      <Row clickable={(e) => {
+        // * the toggle sits inside the clickable row: its click must not also
+        // * expand the details
+        if(findUpClassName(e.target as HTMLElement, ROW_CHECKBOX_FIELD_TOGGLE_CLASS)) return;
+        setExpanded(!expanded());
+      }}>
         <Row.CheckboxFieldToggle>
           <CheckboxFieldTsx
             toggle
@@ -151,6 +159,7 @@ const PluginRow = (props: {record: PluginRecord}) => {
               pluginsManager.setEnabled(record().id, value);
               if(value) reloadPlugin(record());
               else pluginsRuntime.unload(record().id);
+              props.onChanged();
             }}
           />
         </Row.CheckboxFieldToggle>
@@ -178,6 +187,7 @@ const PluginRow = (props: {record: PluginRecord}) => {
               pluginsManager.uninstall(record().id);
               toastNew({langPackKey: 'Exterayond.Plugins.Deleted'});
               setExpanded(false);
+              props.onChanged();
             }
           }}>
             <Row.Icon icon="delete" />
@@ -191,6 +201,14 @@ const PluginRow = (props: {record: PluginRecord}) => {
 };
 
 const ExterayondPlugins = () => {
+  // * the manager's reads are plain localStorage — the version signal makes
+  // * the tab's list (and its enable states) re-read after every mutation
+  const [recordsVersion, bumpRecordsVersion] = createSignal(0);
+  const records = () => {
+    recordsVersion();
+    return pluginsManager.getRecords();
+  };
+
   const install = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -208,6 +226,7 @@ const ExterayondPlugins = () => {
 
           toastNew({langPackKey: 'Exterayond.Plugins.Installed', langPackArguments: [result.record!.name]});
           reloadPlugin(result.record!);
+          bumpRecordsVersion();
         };
         reader.readAsText(file);
       }
@@ -215,8 +234,6 @@ const ExterayondPlugins = () => {
 
     input.click();
   };
-
-  const records = () => pluginsManager.getRecords();
 
   return (
     <>
@@ -234,7 +251,7 @@ const ExterayondPlugins = () => {
         </Section>
       }>
         <Section name="Exterayond.Plugins">
-          {records().map((record) => <PluginRow record={record} />)}
+          {records().map((record) => <PluginRow record={record} onChanged={bumpRecordsVersion} />)}
         </Section>
       </Show>
       <Section name="Exterayond.Plugins.SafeMode">
@@ -243,7 +260,18 @@ const ExterayondPlugins = () => {
             <CheckboxFieldTsx
               toggle
               checked={pluginsManager.isSafeMode()}
-              onChange={(value) => pluginsManager.setSafeMode(value)}
+              onChange={(value) => {
+                pluginsManager.setSafeMode(value);
+                // * safe mode is a runtime state, not just a flag: on stops
+                // * every loaded plugin, off reloads them (the runtime's
+                // * documented safe-mode recovery — until now it existed
+                // * only on the next page load)
+                for(const record of pluginsManager.getRecords()) {
+                  if(record.engine !== ENGINE_JS) continue;
+                  if(value) pluginsRuntime.unload(record.id);
+                  else pluginsRuntime.load(record.id);
+                }
+              }}
             />
           </Row.CheckboxFieldToggle>
           <Row.Title>{i18n('Exterayond.Plugins.SafeMode')}</Row.Title>

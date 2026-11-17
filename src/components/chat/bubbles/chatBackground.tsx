@@ -35,7 +35,7 @@ import {AppTheme} from '@config/state';
 import {appState} from '@stores/appState';
 import classNames from '@helpers/string/classNames';
 import noop from '@helpers/noop';
-import {wallpaperDrawsPattern} from '@stores/exterayondSettings';
+import {wallpaperDrawsPattern, exterayondSettings} from '@stores/exterayondSettings';
 import {dispatchWallpaperTint} from '@helpers/wallpaperTint';
 
 import styles from '@components/chat/bubbles/chatBackground.module.scss';
@@ -145,6 +145,10 @@ async function resolveFromPeer(
   managers: ReadingManagers
 ): Promise<{theme?: ChatBackgroundTheme, wallPaper?: WallPaper}> {
   if(!peerId.isUser()) return {};
+  // * exteraless `OEAppearanceCustomThemes`: the peer-carried theme and
+  // * wallpaper render only while the gate is on — off is the stock Web K
+  // * background, which ignores the peer's state entirely
+  if(!exterayondSettings.OEAppearanceCustomThemes) return {};
   const full = await managers.appProfileManager.getCachedFullUser(peerId.toUserId());
   if(full?.wallpaper) return {wallPaper: full.wallpaper};
   if(full?.theme) {

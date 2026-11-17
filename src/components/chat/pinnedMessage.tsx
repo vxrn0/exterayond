@@ -116,7 +116,7 @@ export default function createChatPinnedMessage(
   managers: AppManagers
 ): ChatPinnedMessageController {
   const log = logger('PM');
-  const debug = true;
+  const debug = false;
 
   // Imperative animation pieces — kept as-is per refactor scope; only refs are
   // threaded through JSX below.

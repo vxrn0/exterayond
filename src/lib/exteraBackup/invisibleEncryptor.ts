@@ -16,7 +16,10 @@ const BASE = 11;
  * because of ICU regexes. We name it explicitly — same meaning, no reliance on
  * the regex implementation.
  */
-const PATTERN = new RegExp(`^${PREFIX}([${ALPHABET}${SEPARATOR}\\s]*)`);
+// * Android's `String.matches` anchors BOTH ends; a start-anchored pattern
+// * would let a trailing newline through the isEncrypted check and then
+// * break the final base-11 group's decode
+const PATTERN = new RegExp(`^${PREFIX}([${ALPHABET}${SEPARATOR}\\s]*)$`);
 
 export const invisibleEncryptor = {
   encode(text: string): string {
@@ -32,7 +35,10 @@ export const invisibleEncryptor = {
   },
 
   decode(text: string): string {
-    const parts = text.replace(new RegExp(`^${PREFIX}`), '').split(SEPARATOR);
+    // * Android's reader strips every line break before decoding (the
+    // * BufferedReader loop) — a text-editor re-save appends one and the
+    // * final byte group would decode off-by-one without this
+    const parts = text.replace(/\r?\n/g, '').replace(new RegExp(`^${PREFIX}`), '').split(SEPARATOR);
     const bytes = new Uint8Array(parts.length);
     for(let i = 0; i < parts.length; i++) {
       bytes[i] = toNum(parts[i]);

@@ -70,6 +70,7 @@ const GhostEssentialRow = (props: {
           locked={props.locked}
           disabled={props.lockDisabled}
           onToggle={props.onToggleLock}
+          rowName={typeof props.children === 'object' ? (props.children as {textContent?: string}).textContent : String(props.children ?? '')}
         />
       }>{props.children}</Row.Title>
     </Row>
@@ -89,8 +90,12 @@ const ExterayondOther = () => {
   ).length;
 
   const toggleGhostMode = (value: boolean) => {
-    setExterayondGhostMode(value);
-    toastNew({langPackKey: value ? 'Exterayond.Ghost.Enabled' : 'Exterayond.Ghost.Disabled'});
+    // * a fully-locked toggle moves nothing — Android shakes instead of
+    // * acknowledging, so no success toast for a no-op
+    const changed = setExterayondGhostMode(value);
+    if(changed) {
+      toastNew({langPackKey: value ? 'Exterayond.Ghost.Enabled' : 'Exterayond.Ghost.Disabled'});
+    }
   };
   const resetSettings = () => confirmationPopup({
     managers: tab.managers,
@@ -112,17 +117,26 @@ const ExterayondOther = () => {
 
       const reader = new FileReader();
       reader.onload = () => {
-        const content = String(reader.result ?? '');
-        const read = etgBackup.readBackup(content);
-        if(!read || read.knownCount <= 0) {
-          toastNew({langPackKey: 'Exterayond.Backup.NotABackup'});
-          return;
-        }
+        try {
+          const content = String(reader.result ?? '');
+          const read = etgBackup.readBackup(content);
+          if(!read || read.knownCount <= 0) {
+            toastNew({langPackKey: 'Exterayond.Backup.NotABackup'});
+            return;
+          }
 
-        const result = applyExteraBackup(read.root);
-        // * the report carries the applied count plus the unsupported key
-        // * names when the file had Android-only settings (packet 080)
-        toastNew(backupImportReport(result));
+          const result = applyExteraBackup(read.root);
+          // * the report carries the applied count plus the unsupported key
+          // * names when the file had Android-only settings (packet 080)
+          toastNew(backupImportReport(result));
+        } catch(e) {
+          // * a malformed body must not fail silently like the two handled
+          // * paths above
+          toastNew({langPackKey: 'Exterayond.Backup.NotABackup'});
+        }
+      };
+      reader.onerror = () => {
+        toastNew({langPackKey: 'Exterayond.Backup.NotABackup'});
       };
       reader.readAsText(file);
     };
@@ -234,7 +248,7 @@ const ExterayondOther = () => {
       </Section>
       <Section caption="Exterayond.Backup.Info">
         <Row clickable={importBackup}>
-          <Row.Icon icon="download" />
+          <Row.Icon icon="upload" />
           <Row.Title>{i18n('Exterayond.Backup.Import')}</Row.Title>
         </Row>
         <Row clickable={exportBackup}>

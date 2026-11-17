@@ -3,23 +3,27 @@
 // * exteraless replyColors / replyEmoji / replyBackground (all default true):
 // * the off states fall back to the message's own colors, the way
 // * ReplyMessageLine.check() gates them on Android
-:root.oe-no-reply-colors .reply.quote-like {
+// * the off states scope to the in-message reply header only (Android's
+// * ReplyMessageLine.check() gates the message cell): the composer's reply
+// * bar and the stories viewer's reply preview render the same
+// * `.reply.quote-like` and keep their stock look
+:root.oe-no-reply-colors .bubble .reply.quote-like {
   // Peer colors are inline styles; both the accent and striped border must reset.
   --peer-color-rgb: var(--message-primary-color-rgb) !important;
   --peer-border-background: rgb(var(--message-primary-color-rgb)) !important;
 }
 
-:root.oe-no-reply-background .reply.quote-like,
-:root.oe-no-reply-background .reply.quote-like-hoverable {
+:root.oe-no-reply-background .bubble .reply.quote-like,
+:root.oe-no-reply-background .bubble .reply.quote-like-hoverable {
   background-color: transparent;
 }
 
-:root.oe-no-reply-emoji .reply.quote-like .quote-like-pattern,
-:root.oe-no-reply-emoji .reply.quote-like .reply-collectible {
+:root.oe-no-reply-emoji .bubble .reply.quote-like .quote-like-pattern,
+:root.oe-no-reply-emoji .bubble .reply.quote-like .reply-collectible {
   display: none;
 }
 
-:root.oe-no-reply-emoji .reply.has-collectible {
+:root.oe-no-reply-emoji .bubble .reply.has-collectible {
   padding-inline-end: 0;
 }
 

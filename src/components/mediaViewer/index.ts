@@ -672,9 +672,12 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
           button.classList.toggle('hide', hide
             || (button === this.buttons.forward && !exterayondSettings.MediaViewerMenuItemForward));
         } else {
-          // * the menu item of the same action, read live on every menu open
-          button.verify = () => hide
-            || (button === this.btnMenuForward && !exterayondSettings.MediaViewerMenuItemForward);
+          // * the menu item of the same action, read live on every menu open.
+          // * `verify` returns true to KEEP the item (upstream: `!hide`) —
+          // * the port had dropped the negation, filtering every item
+          // * exactly backwards
+          button.verify = () => !hide
+            && (button !== this.btnMenuForward || exterayondSettings.MediaViewerMenuItemForward);
         }
       });
     });

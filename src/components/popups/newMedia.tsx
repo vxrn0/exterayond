@@ -60,6 +60,7 @@ import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 import {IS_MOV_SUPPORTED} from '@environment/videoSupport';
 import rootScope from '@lib/rootScope';
+import {exterayondSettings} from '@stores/exterayondSettings';
 import shake from '@helpers/dom/shake';
 import AUDIO_MIME_TYPES_SUPPORTED from '@environment/audioMimeTypeSupport';
 import liteMode from '@helpers/liteMode';
@@ -550,7 +551,9 @@ export default function showNewMediaPopup(
 
       const sendMenu = new SendContextMenu({
         onSilentClick: () => {
-          chat.input.sendSilent = true;
+          // * GHOST-08: the shared menu item reads the flipped direction —
+          // * with `silentMessageByDefault` on this press sends with sound
+          chat.input.sendSilent = !exterayondSettings.silentMessageByDefault;
           send();
         },
         onScheduleClick: () => {

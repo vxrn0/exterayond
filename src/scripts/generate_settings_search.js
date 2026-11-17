@@ -450,6 +450,34 @@ const analyzeFile = (file, knownTabs) => {
   const rowLinks = []; // rows that lead into a tab, resolved after the walk
   const captured = new Set();
 
+  // * the value formatters (the range selectors' `textRight={(value) => i18n('Tick')}`
+  // * and its named-local variant): a suffix-matched prop carrying a function is
+  // * a formatter over the value, and the i18n keys inside its body are tick
+  // * labels — not rows (an anchor would only flash when the slider shows
+  // * exactly that value)
+  const formatterLocals = new Set();
+  babel.traverse(ast, {
+    JSXAttribute(p) {
+      // * the value-formatter prop of the range selectors (its `textLeft`
+      // * neighbor is the row's real title; `textRight` escapes the
+      // * TITLE_PROPS/suffix rules entirely)
+      const key = p.node.name.type === 'JSXIdentifier' ? p.node.name.name : '';
+      if(key !== 'textRight') return;
+      let valueNode = p.node.value;
+      // `attr={expr}` wraps the expression in a container
+      if(valueNode?.type === 'JSXExpressionContainer') valueNode = valueNode.expression;
+      let localName;
+      if(valueNode?.type === 'Identifier') {
+        localName = valueNode.name;
+        const local = locals.get(localName);
+        if(local) valueNode = local;
+      }
+      if(valueNode && (valueNode.type === 'ArrowFunctionExpression' || valueNode.type === 'FunctionExpression')) {
+        formatterLocals.add(localName ?? Symbol('inline'));
+      }
+    }
+  });
+
   // every string the file spells out, so a templated key only expands over values
   // that are really there
   const fileLiterals = new Set();
@@ -539,6 +567,14 @@ const analyzeFile = (file, knownTabs) => {
 
       if(!I18N_CALLEES.has(calleeName) || callee.type !== 'Identifier') return;
 
+      // * a value formatter's per-tick labels are not rows — see formatterLocals
+      for(let cur = p.parentPath; cur; cur = cur.parentPath) {
+        const node = cur.node;
+        if(node.type === 'VariableDeclarator' && node.id.type === 'Identifier' && formatterLocals.has(node.id.name)) {
+          return;
+        }
+      }
+
       const arg = p.node.arguments.find((a) => a.type === 'StringLiteral');
       if(!arg || !isLangKey(arg.value) || captured.has(arg.value)) return;
       if(DENY_KEY_SHAPE.test(arg.value)) return;
@@ -568,6 +604,23 @@ const analyzeFile = (file, knownTabs) => {
       // a title handed to a component built from an options object, the way the
       // privacy screens are: `new PrivacySection({title: 'PrivacyP2PHeader'})`
       if(DENY_PROPS.has(key) || (!TITLE_PROPS.includes(key) && !TITLE_PROP_SUFFIX.test(key))) return;
+
+      // * a suffix-matched prop carrying a FUNCTION (`textRight={avatarCornersLabel}`
+      // * → `(value) => i18n('Tick')`, the range selectors' per-tick value
+      // * labels) is a formatter over the value, not a row's static title —
+      // * its keys are tick labels whose anchors would only flash when the
+      // * slider shows exactly that value. The value may name a local, so
+      // * identifiers resolve through the file's declarations first.
+      if(!TITLE_PROPS.includes(key)) {
+        let valueNode = p.node.value;
+        if(valueNode.type === 'Identifier') {
+          const local = locals.get(valueNode.name);
+          if(local) valueNode = local;
+        }
+        if(valueNode.type === 'ArrowFunctionExpression' || valueNode.type === 'FunctionExpression') {
+          return;
+        }
+      }
 
       for(const langKey of langKeysFromExpression(p.node.value, fileLiterals)) {
         if(!DENY_KEY_SHAPE.test(langKey)) push(menuKind || 'row', langKey);

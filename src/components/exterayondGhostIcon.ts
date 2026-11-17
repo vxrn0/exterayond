@@ -15,11 +15,23 @@ const GHOST_PATHS = [
 /** The evenOdd body path (the third); the first two are the filled eyes. */
 const GHOST_BODY_PATH = GHOST_PATHS[2];
 
-export function createGhostIcon(className?: string): HTMLElement {
+/**
+ * `label` promotes the pictogram from decorative to a status image: the
+ * topbar's indicator IS the only persistent "Ghost Mode is active" signal a
+ * screen-reader user has in a chat, so it carries `role="img"` and a
+ * localized name; the burger menu's copy keeps `aria-hidden` (its text label
+ * already carries the state).
+ */
+export function createGhostIcon(className?: string, label?: string): HTMLElement {
   const span = document.createElement('span');
   span.classList.add('extera-ghost-icon');
   if(className) span.classList.add(className);
-  span.setAttribute('aria-hidden', 'true');
+  if(label) {
+    span.setAttribute('role', 'img');
+    span.setAttribute('aria-label', label);
+  } else {
+    span.setAttribute('aria-hidden', 'true');
+  }
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', '24');

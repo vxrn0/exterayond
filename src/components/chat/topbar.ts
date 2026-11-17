@@ -168,7 +168,7 @@ export default class ChatTopbar {
     // * GHOST-11: the ghost indicator rides the title's right (Android's
     // * title status drawable, DialogsActivity.updateStatus); re-shown by the
     // * ghost state event, initially hidden
-    this.ghostIndicator = createGhostIcon('extera-ghost-indicator');
+    this.ghostIndicator = createGhostIcon('extera-ghost-indicator', I18n.format('Exterayond.Ghost.Indicator', true));
     this.ghostIndicator.classList.add('hide');
 
     this.listenerSetter.add(rootScope)('exterayond_ghost_mode_changed', () => {
@@ -1052,7 +1052,9 @@ export default class ChatTopbar {
         recentRequesters.map((userId) => userId.toPeerId(false)),
         requestsPending
       ).then((callback) => {
-        if(!middleware()) {
+        // * a newer `set()` superseded this run (or the middleware died) —
+        // * nothing to commit
+        if(!callback || !middleware()) {
           return;
         }
 

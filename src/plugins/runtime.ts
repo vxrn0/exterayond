@@ -35,7 +35,9 @@ type PluginInstance = {
   record: PluginRecord,
   settingsModels: unknown[],
   menuItems: MenuItemData[],
-  eventHandlers: Map<AppEventName, Set<() => void>>
+  eventHandlers: Map<AppEventName, Set<() => void>>,
+  /** The `onPluginUnload` callbacks THIS instance registered — unloading one plugin must not fire another's. */
+  unloadCallbacks: Set<() => void>
 };
 
 const instances = new Map<string, PluginInstance>();
@@ -61,7 +63,7 @@ const buildFacade = (instance: PluginInstance) => {
         if(gate('ui')) setTimeout(callback, 0);
       },
       onPluginUnload(callback: () => void): void {
-        if(gate('ui')) instanceUnloadCallbacks.add(callback);
+        if(gate('ui')) instance.unloadCallbacks.add(callback);
       }
     },
 
@@ -125,8 +127,6 @@ const buildFacade = (instance: PluginInstance) => {
   };
 };
 
-const instanceUnloadCallbacks = new Set<() => void>();
-
 const dispatchEvent = (event: AppEventName): void => {
   for(const instance of instances.values()) {
     instance.eventHandlers.get(event)?.forEach((callback) => {
@@ -166,8 +166,13 @@ export const pluginsRuntime = {
       record,
       settingsModels: [],
       menuItems: [],
-      eventHandlers: new Map()
+      eventHandlers: new Map(),
+      unloadCallbacks: new Set()
     };
+
+    // * a reload over a loaded instance replaces it — the old one's unload
+    // * callbacks fire first, or their closures leak
+    this.unload(id);
 
     try {
       // * the same honest boundary as the Android SDK: same process, visible
@@ -195,13 +200,14 @@ export const pluginsRuntime = {
     instance.menuItems = [];
     instance.eventHandlers.clear();
     instances.delete(id);
-    const callbacks = [...instanceUnloadCallbacks];
-    instanceUnloadCallbacks.clear();
-    callbacks.forEach((callback) => {
+    // * only the unloaded plugin's own callbacks — a global set fired every
+    // * other plugin's unload too (and destroyed them)
+    instance.unloadCallbacks.forEach((callback) => {
       try {
         callback();
       } catch(e) {}
     });
+    instance.unloadCallbacks.clear();
     notifyMenuChange();
   },
 

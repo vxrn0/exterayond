@@ -201,6 +201,13 @@ export class ThemeController {
   private _themeColorElem: Element;
   private systemTheme: AppTheme['name'];
   private styleElement: HTMLStyleElement;
+  /**
+   * The exteraless palette's surface overrides for the `.night` mirror rule
+   * (`_setTheme` bakes them into the rule, `setNightMirrorOverrides` feeds
+   * them from the palette store) — the mirror's subtree must resolve the
+   * palette's surfaces, not the stock ones.
+   */
+  private nightMirrorOverrides = new Map<string, {value: string, rgb: string}>();
   public AppBackgroundTab: typeof AppBackgroundTab;
   // Injected by appImManager (avoids an import cycle, mirrors AppBackgroundTab). Used to await
   // the wallpaper re-render inside the theme-switch view transition so it's captured in sync.
@@ -323,8 +330,7 @@ export class ThemeController {
     return Modes.a11y && !!useAppSettings()[0].increaseContrast;
   }
 
-  public _setTheme(silent?: boolean) {
-    const _log = log.bindPrefix('setTheme');
+  public _setTheme(silent?: boolean) {    const _log = log.bindPrefix('setTheme');
     _log(`set colors, silent=${silent}`);
     const isNight = this.isNight();
     const colorScheme = document.head.querySelector('[name="color-scheme"]');
@@ -346,11 +352,41 @@ export class ThemeController {
     // Mirror the active theme into .night when current is already dark (night/tinted) so menus
     // that opt into `.night` match the active palette instead of the static 'night' base.
     this.applyTheme(isNight ? theme : this.getTheme('night'), e, true);
+    // * the exteraless palette's surface family rides on top: subtrees that
+    // * opt into `.night` must resolve the palette's surfaces, not the
+    // * stock ones (the palette writes inline vars on <html>, which this
+    // * rule overrides for its subtree)
+    for(const [key, override] of this.nightMirrorOverrides) {
+      e.style.setProperty('--' + key, override.value);
+      e.style.setProperty('--' + key + '-rgb', override.rgb);
+    }
     style.textContent = `.night {${e.style.cssText}}`;
 
     this.applyHighlightingColor();
     !silent && rootScope.dispatchEventSingle('theme_changed');
     _log('end');
+  }
+
+  /**
+   * Feeds the palette's surface family into the `.night` mirror (see the
+   * `nightMirrorOverrides` field). The rule is re-rendered right away — the
+   * palette applies after `_setTheme`'s own mirror build (it rides the
+   * `theme_changed` the apply dispatches), so the overrides must land on top
+   * of this cycle's rule, not the next one's.
+   */
+  public setNightMirrorOverrides(overrides: {[key: string]: {value: string, rgb: string}} | undefined) {
+    this.nightMirrorOverrides = new Map(Object.entries(overrides ?? {}));
+    if(!this.styleElement) {
+      return;
+    }
+
+    const e = document.createElement('div');
+    this.applyTheme(this.isNight() ? this.getTheme() : this.getTheme('night'), e, true);
+    for(const [key, override] of this.nightMirrorOverrides) {
+      e.style.setProperty('--' + key, override.value);
+      e.style.setProperty('--' + key + '-rgb', override.rgb);
+    }
+    this.styleElement.textContent = `.night {${e.style.cssText}}`;
   }
 
   /**

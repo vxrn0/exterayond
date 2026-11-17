@@ -8,6 +8,7 @@ import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId'
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {i18n, join} from '@lib/langPack';
 import {useAppConfig, useIsFrozen} from '@stores/appState';
+import {exterayondSettings} from '@stores/exterayondSettings';
 import {Message, User} from '@layer';
 import {createMemo, createRoot, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
@@ -247,7 +248,8 @@ export default async function showForwardPopup(
 
     sendMenu = new SendMenu({
       onSilentClick: () => {
-        silent = true;
+        // * GHOST-08: the shared menu item reads the flipped direction
+        silent = !exterayondSettings.silentMessageByDefault;
         finalizingThroughButton = true;
         handle.finalize();
       },

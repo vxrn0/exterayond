@@ -10118,6 +10118,13 @@ export class AppMessagesManager extends AppManager {
 
     releaseUnreadCount();
 
+    // * the unread-priority sort counts mentions and reactions too — the
+    // * filter index must re-process like the unread-mark path does, or a
+    // * dialog whose mention/reaction was just read stays stuck at the top
+    // * of the unread band (and a fresh one never rises) until an unrelated
+    // * event re-processes it
+    this.dialogsStorage.processDialogForFilters(dialog);
+
     this.rootScope.dispatchEvent('dialog_unread', {peerId: options.peerId, dialog});
     this.dialogsStorage.setDialogToState(dialog);
   }

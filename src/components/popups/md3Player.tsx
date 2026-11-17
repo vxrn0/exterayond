@@ -193,7 +193,10 @@ export default function showMd3Player(controller: AppMediaPlaybackController) {
       // * the gate mirrors Android's onCoverTouch early return: the drag only
       // * runs for the card and disc covers while the key allows it
       attachCoverSwipe(coverBox, {
-        allowed: () => !coverAnimating && framed() && !!exterayondSettings.OEPlayerCoverSwipe,
+        // * slotted playback has no next/previous (the next button is
+        // * disabled for it) — a swipe would run the whole out/in
+        // * choreography around a no-op switch
+        allowed: () => !coverAnimating && framed() && !details().isSlotted && !!exterayondSettings.OEPlayerCoverSwipe,
         onDrag: (dx) => {
           const visual = coverSwipeDragVisual(dx, coverStyle() === 3);
           coverBox.style.transform = visual.transform;

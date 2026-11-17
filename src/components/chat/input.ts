@@ -2916,6 +2916,10 @@ export default class ChatInput {
     }
 
     this.noWebPage = draft.pFlags.no_webpage;
+    // * the preview position rides the draft like the other preview state —
+    // * the radio seeding at the attach point shows it, the flag must match
+    // * what the send will read
+    this.invertMedia = !!draft.pFlags.invert_media;
     if(draftReplyToMsgId) {
       this.initMessageReply({
         replyToMsgId: draftReplyToMsgId,
@@ -4025,6 +4029,14 @@ export default class ChatInput {
     // same-URL cache check so a fetch left in flight by a live toggle loses
     // its guard and cannot attach the suppressed preview late.
     if(!this.editMsgId && exterayondSettings.DisableLinkPreviewByDefault) {
+      // * a draft restored from another session may carry the preview its
+      // * composer explicitly kept (`inputMediaWebPage` media) — suppressing
+      // * it here would kill it and publish `no_webpage` back over the other
+      // * device's state on the next save
+      if(this.processingDraftMessage?.media?._ === 'inputMediaWebPage') {
+        return;
+      }
+
       const hadPreview = !!(this.willSendWebPage || this.getWebPagePromise);
       this.lastUrl = '';
       this.willSendWebPage = null;
@@ -4089,6 +4101,10 @@ export default class ChatInput {
         if(this.webPageElements) {
           const positionElement = oldWebPage && invertMedia ? this.webPageElements.above : this.webPageElements.below;
           positionElement.checkboxField.checked = true;
+          // * the radio was set programmatically — its onChange never fired,
+          // * so the flag the send reads must be synced to what the UI shows
+          // * (a fresh URL resets to Below, an edited message keeps its own)
+          this.invertMedia = positionElement === this.webPageElements.above;
 
           const sizeElement = oldWebPage && (messageMedia as MessageMedia.messageMediaWebPage).pFlags.force_small_media ? this.webPageElements.smaller : this.webPageElements.larger;
           sizeElement.checkboxField.checked = true;
@@ -4939,6 +4955,9 @@ export default class ChatInput {
     this.lastUrl = '';
     delete this.noWebPage;
     this.willSendWebPage = null;
+    // * the position radio leaves with the preview — the flag must not
+    // * survive into the next message's preview
+    this.invertMedia = false;
   }
 
   public static async sendMessageWithForward({

@@ -225,7 +225,13 @@ export default class ChatRecording {
 
       if(!isEphemeral) {
         const preparedPaymentResult = await this.input.paidMessageInterceptor.prepareStarsForPayment(1);
-        if(preparedPaymentResult === PAYMENT_REJECTED) return;
+        // * a rejected payment aborts the send: the one-shot send-menu flags
+        // * would otherwise leak into the next message (takeSendingFlags
+        // * never runs — onMessageSent is what resets them)
+        if(preparedPaymentResult === PAYMENT_REJECTED) {
+          this.input.resetSendingFlags();
+          return;
+        }
 
         sendingParams.confirmedPaymentResult = preparedPaymentResult;
       }
@@ -248,6 +254,9 @@ export default class ChatRecording {
         });
 
         this.input.onMessageSent(false, true, isEphemeral);
+      }).catch(() => {
+        // * a failed decode aborts the send like a rejected payment would
+        this.input.resetSendingFlags();
       });
     };
 
@@ -301,7 +310,11 @@ export default class ChatRecording {
         this.pinnedEphemeralSendingParams = undefined;
         if(!isEphemeral) {
           const preparedPaymentResult = await this.input.paidMessageInterceptor.prepareStarsForPayment(1);
-          if(preparedPaymentResult === PAYMENT_REJECTED) return;
+          // * same one-shot flag reset as the voice path's abort
+          if(preparedPaymentResult === PAYMENT_REJECTED) {
+            this.input.resetSendingFlags();
+            return;
+          }
           sendingParams.confirmedPaymentResult = preparedPaymentResult;
         }
 

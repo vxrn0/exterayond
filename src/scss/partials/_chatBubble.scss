@@ -2384,8 +2384,8 @@
   }
 
   &.with-reply-markup {
-    --border-end-start-radius: #{$bubble-border-radius-medium} !important;
-    --border-end-end-radius: #{$bubble-border-radius-medium} !important;
+    --border-end-start-radius: var(--oe-bubble-tail-radius, #{$bubble-border-radius-medium}) !important;
+    --border-end-end-radius: var(--oe-bubble-tail-radius, #{$bubble-border-radius-medium}) !important;
   }
 
   .name-with-reply {
@@ -3575,7 +3575,8 @@
     }
 
     &:not(.can-have-tail) {
-      --border-end-start-radius: #{$bubble-border-radius-big};
+      // * the corner follows the bubbleRadius slider like the base corners
+      --border-end-start-radius: var(--oe-bubble-radius, #{$bubble-border-radius-big});
     }
   }
 
@@ -3670,7 +3671,7 @@
   } */
 
   &.is-group-first, &.is-forced-rounded {
-    --border-start-end-radius: #{$bubble-border-radius-big};
+    --border-start-end-radius: var(--oe-bubble-radius, #{$bubble-border-radius-big});
   }
 
   &.is-group-last, &.is-forced-rounded {
@@ -3684,7 +3685,7 @@
 
       &.has-plain-media-tail {
         .attachment {
-          border-end-end-radius: $bubble-border-radius-big;
+          border-end-end-radius: var(--oe-bubble-radius, #{$bubble-border-radius-big});
         }
       }
 
@@ -3695,7 +3696,7 @@
     }
 
     &:not(.can-have-tail) {
-      --border-end-end-radius: #{$bubble-border-radius-big};
+      --border-end-end-radius: var(--oe-bubble-radius, #{$bubble-border-radius-big});
     }
   }
 
@@ -4278,9 +4279,10 @@ html.oe-hide-channel-share-button .channel-share-button {
   .bubble.is-group-last.can-have-tail,
   .bubble.is-forced-rounded.can-have-tail {
     // * the notch sits on the tail's side: end-start for incoming bubbles,
-    // * end-end for outgoing ones (the is-out block zeroes that one)
-    --border-end-start-radius: #{$bubble-border-radius-big} !important;
-    --border-end-end-radius: #{$bubble-border-radius-big} !important;
+    // * end-end for outgoing ones (the is-out block zeroes that one); the
+    // * corners follow the bubbleRadius slider like the base ones
+    --border-end-start-radius: var(--oe-bubble-radius, #{$bubble-border-radius-big}) !important;
+    --border-end-end-radius: var(--oe-bubble-radius, #{$bubble-border-radius-big}) !important;
   }
 
   .bubble .bubble-tail {

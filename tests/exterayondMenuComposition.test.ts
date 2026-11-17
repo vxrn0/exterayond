@@ -55,8 +55,10 @@ describe('the media viewer menu gate (MENU-07)', () => {
     const source = await readFile(VIEWER_PATH, 'utf-8');
     // * setMessageActionVisibility rewrites each menu item's verify per
     // * message; the gate must live inside that rewrite and read the store
-    // * when the menu actually opens
-    expect(source).toMatch(/button === this\.btnMenuForward && !exterayondSettings\.MediaViewerMenuItemForward/);
+    // * when the menu actually opens. `verify` returns true to KEEP the
+    // * item (upstream's `!hide` semantics) — the port had dropped the
+    // * negation and filtered every item backwards
+    expect(source).toMatch(/!hide\s*&& \(button !== this\.btnMenuForward \|\| exterayondSettings\.MediaViewerMenuItemForward\)/);
   });
 
   test('the toggle also gates the topbar forward button — the desktop surface of the same row', async() => {
@@ -74,7 +76,7 @@ describe('the media viewer menu gate (MENU-07)', () => {
     // * the second composition is the menu item's verify — no third one
     // * (edit/copy/download/delete have no menu key)
     expect(source).toMatch(/button === this\.buttons\.forward && !exterayondSettings\.MediaViewerMenuItemForward/);
-    expect(source.match(/!exterayondSettings\.MediaViewerMenuItemForward/g)).toHaveLength(2);
+    expect(source.match(/exterayondSettings\.MediaViewerMenuItemForward/g)).toHaveLength(2);
   });
 });
 

@@ -580,8 +580,6 @@ export default class Chat extends EventListenerBase<{
 
       log('updating', _fullPeer, resolved.theme, resolved.wallPaper);
       publish();
-
-      createEffect(on(isNightTheme, update, {defer: true}));
     };
 
     const isNightTheme = useIsNightTheme();
@@ -590,6 +588,13 @@ export default class Chat extends EventListenerBase<{
     createEffect(() => {
       update();
     });
+
+    // * the night flip re-resolves the peer theme (its settings differ per
+    // * mode) — one subscription, hoisted out of `update()`: the old spot
+    // * registered a fresh deferred effect on every update() run, and each
+    // * of them fired the resolution again on the next flip (O(N) passes
+    // * that kept growing)
+    createEffect(on(isNightTheme, update, {defer: true}));
 
     // Defensive: when the global theme toggles (day↔night, accent change),
     // chatBackground's own listener fires first and replaces props (dropping

@@ -149,9 +149,10 @@ describe('the popup wiring (source contract)', () => {
   test('the store gate is read at every pointerdown and the switch routes through the controller', async() => {
     const source = await readFile(POPUP_PATH, 'utf-8');
     // * the allowed() gate mirrors Android's early return: animating out, or
-    // * a cover style outside card/disc, or the key off — the store read is
-    // * inside the callback, so the toggle applies live
-    expect(source).toMatch(/allowed: \(\) => !coverAnimating && framed\(\) && !!exterayondSettings\.OEPlayerCoverSwipe/);
+    // * a cover style outside card/disc, or slotted playback (no next to
+    // * switch to), or the key off — the store read is inside the callback,
+    // * so the toggle applies live
+    expect(source).toMatch(/allowed: \(\) => !coverAnimating && framed\(\) && !details\(\)\.isSlotted && !!exterayondSettings\.OEPlayerCoverSwipe/);
     // * the track switch goes through the playback controller under the
     // * session guard, the same path the next/previous buttons take
     expect(source).toMatch(/const switchTrack = \(next: boolean\) => run\(\(\) => next \? controller\.next\(\) : controller\.previous\(\)\);/);

@@ -3,7 +3,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import GroupSetController from '@components/emoticonsDropdown/groupSet';
 import {setExterayondSetting} from '@stores/exterayondSettings';
 
-vi.mock('@lib/rootScope', () => ({default: {addEventListener: vi.fn(), removeEventListener: vi.fn()}}));
+vi.mock('@lib/rootScope', () => ({default: {addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEventSingle: vi.fn()}}));
 
 const set = {_: 'stickerSet', id: '42', title: 'Test group pack', pFlags: {}} as any;
 const listeners: ListenerSetter[] = [];

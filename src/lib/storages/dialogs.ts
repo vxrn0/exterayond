@@ -143,7 +143,7 @@ export default class DialogsStorage extends AppManager {
   /** GEN-12: the exteraless "sort by unread" flag, pushed from the tab (see `setSortByUnread`). */
   private sortByUnreadEnabled = false;
   /** Debounced forum-dialog re-sorts after their topics (re)enter the cache. */
-  private sortByUnreadForumTimeouts: Map<PeerId, number>;
+  private sortByUnreadForumTimeouts: Map<PeerId, number> = new Map();
 
   constructor() {
     super();
@@ -391,6 +391,12 @@ export default class DialogsStorage extends AppManager {
 
     this.forumTopics = new Map();
     this.savedDialogsPromises = new Map();
+    // * the pending resort timers fire one tick after this clear — without
+    // * cancelling, each would find its stale dialog via getDialogOnly and
+    // * re-insert it into the freshly emptied folders
+    for(const timeoutId of this.sortByUnreadForumTimeouts.values()) {
+      ctx.clearTimeout(timeoutId as unknown as ReturnType<typeof ctx.setTimeout>);
+    }
     this.sortByUnreadForumTimeouts = new Map();
     this.sortByUnreadEnabled = false;
     this.folders = {};

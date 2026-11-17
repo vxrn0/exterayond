@@ -392,6 +392,9 @@ export default function createChatAudio(
       mediaListenerSetter.removeAll();
       plate.destroy();
       disposeMiniToggles();
+      // * the class drives the topbar's floating-audio height reservation —
+      // * a destroyed plate must not leave a phantom gap behind
+      document.body.classList.remove('is-pinned-audio-shown');
     }
   };
 }

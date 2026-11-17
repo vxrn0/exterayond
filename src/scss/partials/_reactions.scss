@@ -1,6 +1,13 @@
-:root.oe-hide-reactions-private .oe-reactions-private,
-:root.oe-hide-reactions-channels .oe-reactions-channels,
-:root.oe-hide-reactions-groups .oe-reactions-groups {
+// * The exteraless hide toggles target the peer-kind class Web K puts on
+// * every ReactionsElement — but the bubble's time lives INSIDE that element
+// * when reactions exist (appendBubbleTime moves it there), so only the
+// * strip's children hide and the time stays. Two picker surfaces (the
+// * reacted list's preview strip, the forum search's saved-tags strip)
+// * carry the same class without being chat bubbles and opt out with the
+// * keep marker.
+:root.oe-hide-reactions-private .oe-reactions-private:not(.oe-reactions-keep) > :not(.time),
+:root.oe-hide-reactions-channels .oe-reactions-channels:not(.oe-reactions-keep) > :not(.time),
+:root.oe-hide-reactions-groups .oe-reactions-groups:not(.oe-reactions-keep) > :not(.time) {
   display: none !important;
 }
 

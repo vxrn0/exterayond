@@ -51,6 +51,13 @@ export default class GroupSetController {
         this.update();
       }
     });
+    // * the exteraless hide toggle applies live: an open dropdown follows it
+    // * instead of keeping the stale section until the next open
+    options.listenerSetter.add(rootScope)('exterayond_settings_updated', ({key}) => {
+      if(key === 'hideGroupSticker') {
+        this.update();
+      }
+    });
   }
 
   private getChatId() {

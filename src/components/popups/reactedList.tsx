@@ -210,6 +210,9 @@ export default async function showReactedListPopup(message$: Message.message, in
     middleware: middleware
   });
   reactionsElement.render();
+  // * the exteraless hide-reactions toggles target chat bubbles — this picker's
+  // * preview strip carries the same peer-kind class and must stay
+  reactionsElement.classList.add('oe-reactions-keep');
   reactionsElement.classList.add('no-stripe');
   reactionsElement.classList.remove('has-no-reactions');
 

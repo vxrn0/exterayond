@@ -13,11 +13,14 @@ import {i18n} from '@lib/langPack';
  * literal `i18n()` call a tab renders, and the button's aria-label is not a
  * row.
  */
-export const GhostLockButton = (props: {locked: boolean, disabled: boolean, onToggle: () => void}) => (
+export const GhostLockButton = (props: {locked: boolean, disabled: boolean, onToggle: () => void, rowName?: string}) => (
   <button
     class="exterayond-ghost-lock-button"
     aria-pressed={props.locked}
-    aria-label={i18n('Exterayond.Ghost.LockOption').textContent}
+    // * the five rows render identical buttons — the accessible name names
+    // * WHICH essential it locks, or a buttons-only traversal is a row of
+    // * five identical "lock this option"s
+    aria-label={props.rowName ? `${props.rowName} — ${i18n('Exterayond.Ghost.LockOption').textContent}` : i18n('Exterayond.Ghost.LockOption').textContent}
     disabled={props.disabled}
     onClick={(e) => {
       e.stopPropagation();

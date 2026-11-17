@@ -106,16 +106,29 @@ export default function createChatRequestsPlate(
     plate.setHidden(true);
   };
 
+  /** Monotonic tag for `set()` runs — the older run's commit must not overwrite a newer one's plate. */
+  let setSeq = 0;
+
   const set = async(peerId: PeerId, peerIds: PeerId[], length: number) => {
     if(!peerIds.length) {
       return () => unset(peerId);
     }
 
+    const seq = ++setSeq;
     const avatarsMiddleware = getMiddleware();
     const avatars = new StackedAvatars({avatarSize: AVATAR_SIZE, middleware: avatarsMiddleware.get()});
     const loadPromises: Promise<any>[] = [];
     avatars.render(peerIds, loadPromises);
     await Promise.all(loadPromises);
+
+    // * two `chat_requests` events in quick succession run two `set()`s; the
+    // * older one's avatars may resolve last, and committing it would
+    // * overwrite the plate with stale requesters/count (the same hazard
+    // * the pinned plate guards with its render sequence)
+    if(seq !== setSeq) {
+      avatarsMiddleware.destroy();
+      return undefined;
+    }
 
     return () => {
       const prev = data();

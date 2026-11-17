@@ -68,8 +68,13 @@ export async function bootstrapIm(): Promise<void> {
 
   // * the plugins load once the shell is up: a second parallel entry into the
   // * app's import cycle at boot time races its class evaluation order
-  // * (see importAppTopLevel's note) — this is the first safe moment
-  void import('@plugins/runtime').then(({pluginsRuntime}) => pluginsRuntime.loadAll());
+  // * (see importAppTopLevel's note) — this is the first safe moment. The
+  // * lifecycle's START fires after the load: `onAppEvent` was a documented
+  // * facade member that never dispatched anything
+  void import('@plugins/runtime').then(({pluginsRuntime}) => {
+    pluginsRuntime.loadAll();
+    pluginsRuntime.appEvent('START');
+  });
 }
 
 let topLevel: Promise<typeof import('@lib/appDialogsManager')['default']>;

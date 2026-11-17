@@ -62,7 +62,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import {canEditMemberTag} from '@appManagers/utils/chats/memberTag';
 import openEditMemberTag from '@components/memberTag/openEditMemberTag';
 import ReactionElement from '@components/chat/reaction';
-import ReactionsElement from '@components/chat/reactions';
+import ReactionsElement, {isReactionsHiddenForPeer} from '@components/chat/reactions';
 import createReactionContextMenu from '@components/chat/reactionContextMenu';
 import InputField from '@components/inputField';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
@@ -2000,6 +2000,10 @@ export default class ChatContextMenu {
     // * (ChatActivity:33145, `getShowReactions().Bool() || onDoubleTapped`):
     // * the setting first, the escape as the OR
     if(
+      // * Android composes both halves: the show key (or the double-tap
+      // * escape) AND the peer's hide-reactions verdict
+      // * (ChatActivity:33145, `!disabledReactions() && (… || onDoubleTapped)`)
+      !isReactionsHiddenForPeer(this.message.peerId) &&
       (exterayondSettings.Reactions || this.onDoubleTapped) &&
       this.chat.type !== ChatType.Logs &&
       this.message &&
