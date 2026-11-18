@@ -4047,3 +4047,71 @@ build clean. Recorded-not-fixed: cross-tab settings sync, the five-push
 fan-out (coalesced since), safe-mode trip announcement (new copy), the
 relative-last-seen ≤60 s lag, ShowSmallGIF/stickerSize apply-on-render
 consistency.
+
+## 091 / the new-header style keeps the chat's own width — the invisible-topbar fix (2026-11-18)
+
+The user reported the chat topbar rendering as "a crooked gray line" — no
+avatar, no name, no status. The diagnosis ran over their live session (their
+own console probes; nothing of their session was read): every DOM fact was
+correct — the topbar 48px at its slot, the avatar 40×40, the title white, the
+status gray, `elementFromPoint` hitting the title — while the screen showed
+only the bar's stray shadow. The user's class toggle bisect
+(`oe-new-chat-header`) isolated it: with the style off the floating card
+renders fine, with it on the card's full-width layer paints displaced.
+
+The culprit was the `oe-new-chat-header` block's `max-width: 100%`: the flat
+header spanned the whole main column, but column-center extends under the
+docked sidebar by design (the chat clears it via its own translateX). The
+stock `max-width: var(--chat-width)` slot keeps the bar inside the chat's
+visible column; the widened compositor layer rendered with the content
+displaced — the user's "shifted too far right" fragments over an empty strip.
+
+The fix keeps the flat style's intent (no radius, no shadow, the 46px avatar)
+and drops `max-width: 100%`, so the header spans exactly the chat's own
+column — the web adaptation of Android's full-width no-glass-pill header,
+which spans the screen width the chat itself fills. Recorded as the style's
+documented limit: on the web the header does not widen past the chat column.
+The user then rejected the first color pass — the `color-mix` with the accent
+cast a tint they read as wrong — and picked the plain `--surface-color`
+(matching the sidebar) for the flat header's surface, then asked the width
+back and the bottom rounded. The full-width attempt still broke — and the
+user's full-window screenshot finally pinned the geometry: their sidebar's
+VISUAL width (~368px, the collapsed-with-open-tab pop-out) exceeds the
+column's reserved left space (204px), the column's box extends under the
+panel, and a full-width header parked its avatar and title beneath it while
+the bubbles (self-centered) never clipped.
+
+The final shape anchors the flat header to the chat's VISIBLE width:
+`--oe-topbar-inset-start` is measured from live rects in
+`updateColumnWidths` (the gap between `column-left`'s right edge and
+`column-center`'s left, mirrored for RTL, re-measured on resizes, the
+attached toggle and the sidebar's width transitionend) and applied as the
+header's `inset-inline-start`, with `max-width: none` and the column's
+inline end kept. Square at the top (the bar hugs the page top),
+`$border-radius-big` (24px) rounded at the bottom, like Android's flat
+header; the plain surface matches the sidebar. The earlier
+displaced-paint report is attributed to the same geometry (the bar's left
+part under the panel reads as an empty strip with a stray shadow), not to a
+compositor fault.
+
+Checks: `tsc --noEmit` clean, `scripts/scss-types.js` clean; production
+rebuilt and re-served (the user's visual re-check is the runbook step).
+
+## Dev-session fixes: readUnreaded crash + quiet dev console (2026-11-18)
+
+Two small fixes from the user's live-session feedback ("the console is full
+of commands").
+
+- `readUnreaded` threw an unhandled rejection on every chat whose entire
+  rendered history is local/ephemeral: `getRenderedHistory('desc', true)`
+  filters all bubbles out, and the old `rendered ? splitFullMid(rendered[0])`
+  guard never caught the empty array (an array is always truthy). Guarded on
+  `rendered.length`.
+- dev builds now log errors only unless `?debug=1` opts in — `logger()` resets
+  to `LogTypes.Error` when `Modes.debug` is off, so the page console stays
+  readable during visual checks. The capture buffer is untouched: `capture()`
+  self-gates on DEBUG, and the log timeline still records for crash reports.
+  Production behavior is unchanged. Known leftovers, deliberately not chased:
+  Solid's dev "computations created outside a createRoot" warnings and the
+  plain-http `SW registration failed SecurityError` (the browser refuses SW
+  registration on http; the app falls back).

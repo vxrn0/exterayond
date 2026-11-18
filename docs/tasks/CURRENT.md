@@ -318,3 +318,16 @@ Update the checklist only for fully integrated entries, preserving IDs and sourc
 links. Record changes, tests, and material unverified behavior in `progress.md`.
 Replace this file's priority and current-state paragraphs when they change; keep
 the next action concrete and do not present unverified work as finished.
+
+**Packet 091 (2026-11-18) fixed the invisible chat topbar** — the user's live
+probes (DOM correct, paint displaced) and their class-toggle bisect isolated
+`oe-new-chat-header`'s `max-width: 100%`: the flat header spanned the main
+column whose left part lies under the docked sidebar. The style now keeps the
+chat column's own width slot (the web adaptation of Android's full-width
+header); the flat look (no radius/shadow, tinted surface, 46px avatar) is
+unchanged.
+
+**Same-day housekeeping** — fixed the `readUnreaded` unhandled rejection
+(guarded on the filtered history's length) and quieted the dev console: logs
+are errors-only unless `?debug=1` opts in, the capture buffer still records
+the full timeline.
