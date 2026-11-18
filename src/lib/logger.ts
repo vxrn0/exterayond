@@ -1,4 +1,5 @@
 import DEBUG from '@config/debug';
+import Modes from '@config/modes';
 import {IS_FIREFOX, IS_SAFARI} from '@environment/userAgent';
 import {IS_SERVICE_WORKER, IS_WEB_WORKER} from '@helpers/context';
 import dT from '@helpers/dT';
@@ -122,7 +123,8 @@ export function logger(
   style = ''
 ): Logger {
   let originalPrefix: string;
-  if(!DEBUG && !ignoreDebugReset/*  || true */) {
+  // dev builds are quiet unless ?debug=1 opts in — the capture buffer still records the full timeline
+  if((!DEBUG || !Modes.debug) && !ignoreDebugReset/*  || true */) {
     type = LogTypes.Error;
   }
 
