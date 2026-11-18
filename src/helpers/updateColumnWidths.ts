@@ -402,6 +402,36 @@ export default function updateColumnWidths(): void {
     document.body.classList.toggle('right-column-floats', floats);
     last.floats = floats;
   }
+
+  updateTopbarVisibleInset();
+}
+
+/**
+ * The flat new-header style spans the main column edge to edge, but the
+ * sidebar's VISUAL width can exceed the column's reserved left space (the
+ * collapsed-with-open-tab pop-out, the attached panel): the column's box
+ * extends under it, and a full-width header would park its avatar and title
+ * beneath the panel. The header takes its inline-start inset from this
+ * variable — the real gap between the sidebar's right edge and the column's
+ * left edge, measured from live rects so every state (collapse, tabs,
+ * folders panel, user-resized widths) lands without formula duplication.
+ * RTL mirrors: the sidebar docks on the right, so the measured edge applies
+ * to the inline-end inset there.
+ */
+function updateTopbarVisibleInset(): void {
+  const center = document.getElementById('column-center');
+  const sidebar = document.getElementById('column-left');
+  if(!center || !sidebar || !center.isConnected) {
+    return;
+  }
+
+  const centerRect = center.getBoundingClientRect();
+  const sidebarRect = sidebar.getBoundingClientRect();
+  const rtl = document.documentElement.dir === 'rtl';
+  const inset = rtl ?
+    Math.max(0, Math.round(centerRect.right - sidebarRect.left)) :
+    Math.max(0, Math.round(sidebarRect.right - centerRect.left));
+  center.style.setProperty('--oe-topbar-inset-start', inset + 'px');
 }
 
 export function installColumnWidthsUpdater(): void {
@@ -409,6 +439,11 @@ export function installColumnWidthsUpdater(): void {
   installed = true;
   mediaSizes.addEventListener('resize', updateColumnWidths);
   rootScope.addEventListener('resizing_left_sidebar', updateColumnWidths);
+  // * the sidebar's width transition animates the visual edge the flat
+  // * header's inset is measured from — re-measure when it settles
+  document.getElementById('column-left')?.addEventListener('transitionend', (e) => {
+    if((e as TransitionEvent).propertyName === 'width') updateColumnWidths();
+  });
   // * G-3: the attached-sidebar toggle reshapes the chat's space (the visual
   // * width replaces the layout one in the space math)
   rootScope.addEventListener('exterayond_settings_updated', ({key}) => {

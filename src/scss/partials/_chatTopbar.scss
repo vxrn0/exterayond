@@ -83,12 +83,24 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
   }
 
   // * exteraless newChatHeaderStyle: the header stops being a floating card
-  // * (ChatHeaderUiHelper's no-glass-pill state) — flat, full width of the chat
+  // * (ChatHeaderUiHelper's no-glass-pill state) — flat, spanning the chat's
+  // * VISIBLE width: from the sidebar's real right edge to the column's
+  // * inline end. The sidebar's visual width can exceed the column's
+  // * reserved left space (the collapsed-with-open-tab pop-out, the attached
+  // * panel), and the column's box extends under it — anchoring the header
+  // * at the column's edge parked its avatar and title beneath the panel.
+  // * `--oe-topbar-inset-start` is the live-measured gap
+  // * (helpers/updateColumnWidths.ts), so every state lands without formula
+  // * duplication; RTL mirrors it in the same variable. Square at the top
+  // * (the bar hugs the page top), rounded at the bottom like Android's flat
+  // * header; the plain surface keeps it in one color family with the
+  // * sidebar.
   :root.oe-new-chat-header & {
-    border-radius: 0;
+    max-width: none;
+    inset-inline-start: var(--oe-topbar-inset-start, 0px);
+    border-radius: 0 0 $border-radius-big $border-radius-big;
     box-shadow: none;
-    max-width: 100%;
-    background-color: color-mix(in srgb, var(--primary-color) 5%, var(--surface-color)) !important;
+    background-color: var(--surface-color) !important;
 
     &.has-avatar {
       --topbar-avatar-active-size: 46px;
