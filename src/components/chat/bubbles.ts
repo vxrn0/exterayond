@@ -3770,7 +3770,8 @@ export default class ChatBubbles {
         // ? if message with maxId is not rendered ?
         if(this.scrollable.loadedAll.bottom) {
           const rendered = this.getRenderedHistory('desc', true);
-          const bubblesMaxId = rendered ? splitFullMid(rendered[0]).mid : -1;
+          // the filtered history can be empty when every rendered bubble is local/ephemeral
+          const bubblesMaxId = rendered.length ? splitFullMid(rendered[0]).mid : -1;
           if(maxId >= bubblesMaxId) {
             maxId = Math.max(this.chat.getHistoryMaxId() || 0, maxId);
             if(!middleware()) return;
