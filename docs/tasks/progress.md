@@ -4175,3 +4175,45 @@ the pinned message reads as a separate rounded `#232E3C` plate. Scoped to
 card's own slot — the only geometry that paints reliably in every sidebar
 state (091/092's full-width history). The design was previewed on the static
 stand against the compiled CSS before shipping.
+
+Amendment (094, same day): the user rejected the blue-bar pass — the
+reference's blue came from ITS wallpaper, not from a bar color, and the
+surface should live only under the objects. The final look: the topbar
+surface is fully transparent (the wallpaper shows through the whole top
+strip; the floating slot's edges are invisible, so the 091 geometry hazards
+do not apply), circular `rgba(255,255,255,.07)` fills sit under the back and
+utility buttons, the big title and the status float directly on the
+wallpaper, and the pinned message keeps its own rounded `#232E3C` plate
+(both overrides `!important` — the base surface declaration carries one).
+Previewed on the static stand over a wallpaper stand-in with the reference's
+navy cast.
+
+## 095 / the exterayond icon set wears the md3 soft logo, MD3-rounded (2026-11-19)
+
+The user directed the branding pass ("put this everywhere as preview.webp
+without metadata and make the rounding 13–14 per MD3") with their channel's
+avatar — the mint-wave **soft** md3 variant — as the chosen design
+(candidate 1 of the four md3 renders, confirmed visually on a contact
+sheet). The previous set in `public/assets/img/` still carried the stock
+Telegram favicon set.
+
+- `assets/logo/md3/preview.webp` — the canonical 512px soft logo masked at
+  the MD3 proportion: 150px radius on the 512 canvas = **13.5px at the 46px
+  topbar-avatar scale**, exactly the requested 13–14 band. Saved
+  metadata-free (no exif/xmp/icc; PIL's webp info keys are animation
+  defaults, the file is single-frame).
+- The app's icon set regenerated from the same rounded master, all
+  metadata-free: `android-chrome-36..512` (9 sizes), `favicon-16/32/194`,
+  `apple-touch-icon(-precomposed)` 180, `favicon.ico` (16+32+48 frames),
+  `mstile-70/150/310x310` squares and the `mstile-310x150` wide tile with
+  the logo centred on a transparent plate. The radius scales with each size,
+  so every surface reads the same 13–14px-proportioned shape.
+- The icon cache-busters bumped `?v=jw3mK7G9Ry` → `?v=md3soft1` across
+  `index.html`, `browserconfig.xml` and both manifests, so browsers drop the
+  old Telegram favicon set.
+
+Checks: production rebuilt and re-served (the served favicon-32 returns
+200); the webp verified single-frame and clean. The UI avatar rounding is a
+separate, user-owned knob (`OEAppearanceAvatarCorners`, LOOK-01) — the
+default stays 28/circle; the user slides it in Appearance if they want the
+rendered avatars squarer.
