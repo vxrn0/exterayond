@@ -420,7 +420,9 @@ export class AppImManager extends EventListenerBase<{
 
     this.columnEl.append(this.chatsContainer);
 
-    this.renderChatTips();
+    // * the empty-column tip deck (@components/chatTips) is not rendered —
+    // * the exteraless character has no onboarding deck; the empty column
+    // * shows the wallpaper alone
 
     this.createNewChat();
     this.chatsSelectTab(this.chat);
@@ -3444,12 +3446,9 @@ export class AppImManager extends EventListenerBase<{
     this.updateStatus();
   }
 
-  // * Tip cards for the empty column - the account's own top peers and recently closed chats. Imported
-  // * lazily so this module (which the SolidJS hot-reload guard provider imports) isn't part of an
-  // * import cycle with the components the cards use. A second render replaces the first.
-  private renderChatTips() {
-    import('@components/chatTips').then(({renderChatTips}) => renderChatTips(this.chatsContainer));
-  }
+  // * the empty-column tip deck (@components/chatTips) is not rendered (the
+  // * exteraless character has no onboarding deck); the module stays in the
+  // * tree for upstream parity, its dynamic import simply never fires
 
   private loadSavedReactionTags() {
     savedReactionTags.splice(0, savedReactionTags.length);
@@ -3508,7 +3507,6 @@ export class AppImManager extends EventListenerBase<{
     this.chat.publishBackground('auto');
     apiManagerProxy.updateTabState('chatPeerIds', []);
     this.loadSavedReactionTags();
-    this.renderChatTips();
   }
 
   private scheduleStatusUpdates() {
