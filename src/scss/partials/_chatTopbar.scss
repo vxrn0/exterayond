@@ -82,19 +82,21 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
     @include animation-level-transition(transform var(--transition-standard-in), margin-bottom 0s 0s, background-color var(--transition-standard-in));
   }
 
-  // * the exteraless action-bar look (packet 094): the classic Telegram
-  // * dark-blue surface family from Android's night theme — the bar, the
-  // * pinned card and circular fills under the back / menu buttons; the
-  // * action-bar title runs one step larger, like the Android header.
-  // * Scoped to night: the light theme keeps the stock surfaces. The
-  // * geometry stays the floating card's own slot — the only slot that
-  // * paints reliably in every sidebar state.
+  // * the exteraless action-bar look (packet 094, the user's direction): NO
+  // * bar surface at all — the wallpaper shows through the whole top strip,
+  // * and the background lives only under the objects: circular fills under
+  // * the back / utility buttons and the pinned card's own rounded plate.
+  // * The action-bar title runs one step larger, like the Android header.
+  // * Scoped to night (the reference is a dark design); the blue tint the
+  // * user pointed at comes from the wallpaper, not from the bar. Geometry
+  // * stays the floating card's slot — transparent, so the slot edges are
+  // * invisible and the full-width paint hazards do not apply.
   html.night &:not(.hide) {
-    background-color: #17212B !important;
-    box-shadow: 0 1px 6px -1px rgba(8, 14, 24, .5);
+    background-color: transparent !important;
+    box-shadow: none !important;
 
     .sidebar-close-button,
-    .btn-menu-toggle {
+    .chat-utils .btn-icon {
       background: rgba(255, 255, 255, .07);
       border-radius: 50%;
     }
@@ -108,10 +110,11 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
       color: rgba(255, 255, 255, .55);
     }
 
-    // * the pinned card reads as a separate rounded plate on the blue bar
+    // * the pinned card reads as a separate rounded plate floating on the
+    // * wallpaper
     .topbar-floating-plates .pinned-container {
-      background-color: #232E3C;
-      border-radius: $border-radius-big;
+      background-color: #232E3C !important;
+      border-radius: $border-radius-big !important;
     }
   }
 
