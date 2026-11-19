@@ -319,13 +319,17 @@ links. Record changes, tests, and material unverified behavior in `progress.md`.
 Replace this file's priority and current-state paragraphs when they change; keep
 the next action concrete and do not present unverified work as finished.
 
-**Packet 091 (2026-11-18) fixed the invisible chat topbar** — the user's live
-probes (DOM correct, paint displaced) and their class-toggle bisect isolated
-`oe-new-chat-header`'s `max-width: 100%`: the flat header spanned the main
-column whose left part lies under the docked sidebar. The style now keeps the
-chat column's own width slot (the web adaptation of Android's full-width
-header); the flat look (no radius/shadow, tinted surface, 46px avatar) is
-unchanged.
+**Packet 091 (2026-11-18) chased the invisible chat topbar**; **packet 092
+(2026-11-19) retired the style to class 3** — neither the chat-width slot,
+nor the plain-surface flat pass, nor the measured-inset full width produced
+an honest surface (the sidebar's visual width exceeds the column's reserved
+left space in the collapsed-with-open-tab and attached states, so every
+full-width variant parked its content beneath the panel while the DOM probed
+correct). The flat look is withdrawn: `oe-new-chat-header` is gone from the
+scss, the store, the Appearance tab and the search index; the `.extera` alias
+stays recognized-unsupported; the MD3 master's denominator derives from
+`getMd3StyleTotal()`. The user gets the stock floating card, which always
+rendered correctly.
 
 **Same-day housekeeping** — fixed the `readUnreaded` unhandled rejection
 (guarded on the filtered history's length) and quieted the dev console: logs

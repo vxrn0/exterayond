@@ -4115,3 +4115,63 @@ of commands").
   Solid's dev "computations created outside a createRoot" warnings and the
   plain-http `SW registration failed SecurityError` (the browser refuses SW
   registration on http; the app falls back).
+
+## 092 / the new-chat-header style retires to class 3 (2026-11-19)
+
+The flat full-width header adaptation from 091 is withdrawn after the user
+rejected it outright ("make it normal"): the measured-inset variant still
+displaced its paint on their live session. The final verdict follows the
+GEN pattern — **the web topbar IS the floating-card counterpart** of
+Android's `ChatHeaderUiHelper` states, and neither widening pass produced an
+honest surface: the sidebar's visual width exceeds the column's reserved
+left space in the collapsed-with-open-tab and attached states, so every
+full-width variant parked its avatar and title beneath the panel while the
+DOM probed correct (the bubbles, self-centered, never clipped — which hid
+the geometry until the full-window screenshot).
+
+Removed: the `oe-new-chat-header` block from `_chatTopbar.scss`, the class
+toggle and the `OEAppearanceNewChatHeaderStyle` default from the store, the
+row from the Appearance tab's MD3 group, the `Exterayond.NewChatHeaderStyle`
+lang key, and the key from the search index (regenerated: 63 sections, 556
+entries). The MD3 master's counter denominator now derives from
+`getMd3StyleTotal()` instead of hardcoded 8s — the count pins moved 8 → 7
+(the forced set) with the stock default count unchanged at 5. The `.extera`
+alias `newChatHeaderStyle` moved to `KNOWN_UNSUPPORTED_KEYS`: imports report
+it unsupported and never apply it, and stored records carry the key as
+unknown, which the boot validation drops. The user gets the stock floating
+card, which always rendered correctly.
+
+Checks: `tsc --noEmit` clean; the three affected suites green (111 —
+settings, tabs, exteraBackup); production rebuilt and re-served.
+
+## 093 / the empty-column tip deck leaves the main screen (2026-11-19)
+
+The user directed the removal ("remove the intrusive tips from the main
+screen"): the `chatTips` deck — the macOS `WidgetController`-style tip cards
+(Appearance / Stickers / Recent Peers) the stock web client shows on the
+empty chat column — is gone from the fork's main screen. The exteraless
+character has no onboarding deck; the empty column shows the wallpaper alone.
+
+The removal is mount-site only: `appImManager` no longer calls
+`renderChatTips` at start-up or after the account switch, with a comment
+pointing at the module. The `@components/chatTips` module itself stays in
+the tree for upstream parity — its dynamic import simply never fires, so
+nothing of it ships to the runtime; the state record in `config/state.ts`
+and the lang keys stay as upstream parity too. Restoring the deck is two
+mount lines.
+
+Checks: `tsc --noEmit` clean, oxlint clean on the touched file; production
+rebuilt and re-served (the user's visual re-check is the runbook step).
+
+## 094 / the topbar wears the classic dark-blue action-bar look (2026-11-19)
+
+The user's reference (Telegram Android's group header in the classic dark
+theme) directed the topbar's night look: the bar's surface is the classic
+`#17212B` blue family, the back and menu buttons sit in circular
+`rgba(255,255,255,.07)` fills, the action-bar title runs one step larger
+(1.25rem / 1.625rem line), the status dims to `rgba(255,255,255,.55)`, and
+the pinned message reads as a separate rounded `#232E3C` plate. Scoped to
+`html.night` (the light theme keeps the stock surfaces) and to the floating
+card's own slot — the only geometry that paints reliably in every sidebar
+state (091/092's full-width history). The design was previewed on the static
+stand against the compiled CSS before shipping.
