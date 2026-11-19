@@ -50,6 +50,9 @@ export const KNOWN_UNSUPPORTED_KEYS: string[] = [
   // exteraconfig (Neko/Na/Android-bound targets)
   'uploadSpeedBoost',
   'archiveOnPull', 'disableUnarchiveSwipe',
+  // * newChatHeaderStyle moved here from SUPPORTED (packet 091): the flat
+  // * full-width header has no honest web surface — class 3
+  'newChatHeaderStyle',
   'doNotUseProxy',
   'hideDialogsSearchBar',
   'iosNavigationBarStyle', 'iosChatHeader', 'profileMusicCard',
@@ -163,7 +166,6 @@ const SUPPORTED: SupportedEntry[] = [
   // * Android exports NekoConfig.typeface under this alias (EtgBackup.java:339)
   {section: SECTION_EXTERA, key: 'useSystemFonts', kind: 'bool', storeKey: 'TypefaceUseDefault'},
   {section: SECTION_EXTERA, key: 'sectionsSeparatedHeaders', kind: 'bool', storeKey: 'OEAppearanceSeparateHeaders'},
-  {section: SECTION_EXTERA, key: 'newChatHeaderStyle', kind: 'bool', storeKey: 'OEAppearanceNewChatHeaderStyle'},
   {section: SECTION_EXTERA, key: 'newLoadingStyle', kind: 'bool', storeKey: 'OEAppearanceNewLoadingStyle'},
   {section: SECTION_EXTERA, key: 'newNavigationBarStyle', kind: 'bool', storeKey: 'OEAppearanceNewNavigationBarStyle'},
   {section: SECTION_EXTERA, key: 'newSliderStyle', kind: 'bool', storeKey: 'SliderStyle', toEtg: (value) => value === 2, toOurs: (value) => value ? 2 : 0},

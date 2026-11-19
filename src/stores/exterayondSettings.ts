@@ -74,7 +74,6 @@ export const OE_DEFAULTS = {
    * interface uses the platform's fonts instead of the bundled Roboto.
    */
   TypefaceUseDefault: true,
-  OEAppearanceNewChatHeaderStyle: false,
   OEAppearanceNewLoadingStyle: true,
   SliderStyle: 2,
   SwitchStyle: 2,
@@ -1126,13 +1125,15 @@ export const getHashtagSearchType = (publicChannel: boolean): 'my' | 'public' | 
 };
 
 const MD3_BOOLEAN_KEYS = [
-  'OEAppearanceNewLoadingStyle', 'OEAppearanceNewChatHeaderStyle',
+  'OEAppearanceNewLoadingStyle',
   'OEAppearanceNewNavigationBarStyle', 'OEAppearanceM3ListItems',
   'OEAppearanceMd3Player', 'OEAppearanceMd3MiniPlayer'
 ] as const;
 
 export const getMd3StyleCount = () => MD3_BOOLEAN_KEYS.filter((key) => exterayondSettings[key]).length +
   Number(exterayondSettings.SliderStyle === 2) + Number(exterayondSettings.SwitchStyle >= 2);
+
+export const getMd3StyleTotal = () => MD3_BOOLEAN_KEYS.length + 2;
 
 export const setAllMd3Styles = (enabled: boolean) => batch(() => {
   for(const key of MD3_BOOLEAN_KEYS) setExterayondSetting(key, enabled);
@@ -1394,7 +1395,6 @@ if(typeof document !== 'undefined') {
       classList.toggle('oe-center-title', exterayondSettings.OEAppearanceCenterTitle);
       classList.toggle('oe-system-font', exterayondSettings.TypefaceUseDefault);
       classList.toggle('oe-attached-sidebar', exterayondSettings.OEAppearanceAttachedSidebar);
-      classList.toggle('oe-new-chat-header', exterayondSettings.OEAppearanceNewChatHeaderStyle);
       classList.toggle('oe-md3-loading', exterayondSettings.OEAppearanceNewLoadingStyle);
       classList.toggle('oe-md3-sliders', exterayondSettings.SliderStyle === 2);
       classList.toggle('oe-md3-switches', exterayondSettings.SwitchStyle >= 2);

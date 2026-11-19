@@ -214,7 +214,6 @@ const generated: GeneratedSettingsSearchData = {
     {id: 'AppExterayondAppearanceTab:Exterayond.Md3.ProgressIndicators', sectionId: 'AppExterayondAppearanceTab', kind: 'option', titleLangKey: 'Exterayond.Md3.ProgressIndicators'},
     {id: 'AppExterayondAppearanceTab:Exterayond.Md3.Sliders', sectionId: 'AppExterayondAppearanceTab', kind: 'option', titleLangKey: 'Exterayond.Md3.Sliders'},
     {id: 'AppExterayondAppearanceTab:Exterayond.Md3.Switches', sectionId: 'AppExterayondAppearanceTab', kind: 'option', titleLangKey: 'Exterayond.Md3.Switches'},
-    {id: 'AppExterayondAppearanceTab:Exterayond.NewChatHeaderStyle', sectionId: 'AppExterayondAppearanceTab', kind: 'option', titleLangKey: 'Exterayond.NewChatHeaderStyle'},
     {id: 'AppExterayondAppearanceTab:Exterayond.PillStack', sectionId: 'AppExterayondAppearanceTab', kind: 'row', titleLangKey: 'Exterayond.PillStack'},
     {id: 'AppExterayondAppearanceTab:Exterayond.Player.ControlsSize', sectionId: 'AppExterayondAppearanceTab', kind: 'row', titleLangKey: 'Exterayond.Player.ControlsSize'},
     {id: 'AppExterayondAppearanceTab:Exterayond.Player.Cover', sectionId: 'AppExterayondAppearanceTab', kind: 'subsection', titleLangKey: 'Exterayond.Player.Cover'},

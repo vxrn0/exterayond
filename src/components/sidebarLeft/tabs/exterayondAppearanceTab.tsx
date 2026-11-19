@@ -21,6 +21,7 @@ import {
   exterayondSettings,
   getPlayerCoverStyle,
   getMd3StyleCount,
+  getMd3StyleTotal,
   setAllMd3Styles,
   useExterayondSettings
 } from '@stores/exterayondSettings';
@@ -197,7 +198,6 @@ const ExterayondAppearance = () => {
     ['OEAppearanceNewLoadingStyle', 'Exterayond.Md3.ProgressIndicators'],
     ['SliderStyle', 'Exterayond.Md3.Sliders'],
     ['SwitchStyle', 'Exterayond.Md3.Switches'],
-    ['OEAppearanceNewChatHeaderStyle', 'Exterayond.NewChatHeaderStyle'],
     ['OEAppearanceNewNavigationBarStyle', 'Exterayond.Md3.Navigation'],
     ['OEAppearanceM3ListItems', 'Exterayond.Md3.ListItems'],
     ['OEAppearanceMd3Player', 'Exterayond.Md3.Player'],
@@ -242,17 +242,17 @@ const ExterayondAppearance = () => {
         <Row>
           <Row.CheckboxFieldToggle>
             {/* * the master reads "full set vs not": a partially-on state (the
-              * stock defaults already carry 3/8) shows unchecked and a click
+              * stock defaults already carry 3/7) shows unchecked and a click
               * COMPLETES the set — a checked-then-partial display would trap
-              * the click direction; the x/8 subtitle carries the exact count */}
+              * the click direction; the x/7 subtitle carries the exact count */}
             <CheckboxFieldTsx
               toggle
-              checked={getMd3StyleCount() === 8}
+              checked={getMd3StyleCount() === getMd3StyleTotal()}
               onChange={(value) => setAllMd3Styles(value)}
             />
           </Row.CheckboxFieldToggle>
           <Row.Title>{i18n('Exterayond.Md3')}</Row.Title>
-          <Row.Subtitle>{getMd3StyleCount()}/8</Row.Subtitle>
+          <Row.Subtitle>{getMd3StyleCount()}/{getMd3StyleTotal()}</Row.Subtitle>
         </Row>
         <details class="exterayond-md3-options">
           <summary>{i18n('Exterayond.Md3.Customize')}</summary>
@@ -272,7 +272,7 @@ const ExterayondAppearance = () => {
             </Row>
           ))}
           {/* * the ninth MD3 part (packet 065) stays an independent row: the
-            * master's x/8 count and its group are the eight Android parts' */}
+            * master's x/7 count and its group are the Android parts' */}
           <Row>
             <Row.CheckboxFieldToggle>
               <CheckboxFieldTsx

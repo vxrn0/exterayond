@@ -6245,7 +6245,6 @@ const lang = {
   'Exterayond.HideFloatingButton': 'Hide Floating Button',
   'Exterayond.SeparateHeaders': 'Separate Headers',
   'Exterayond.GlassMessageMenu': 'Frosted Message Menu',
-  'Exterayond.NewChatHeaderStyle': 'Chat header',
   'Exterayond.StickerShape': 'Sticker Shape',
   'Exterayond.StickerShape.Default': 'Default',
   'Exterayond.StickerShape.Rounded': 'Rounded',

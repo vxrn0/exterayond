@@ -284,13 +284,13 @@ describe('the exteraless Appearance tab', () => {
   it('the MD3 master switch updates all components and its visible count', () => {
     setAllMd3Styles(false);
     const master = [...document.querySelectorAll<HTMLElement>('.row')].find((row) => row.textContent.includes('Exterayond.Md3'));
-    expect(master.textContent).toContain('0/8');
+    expect(master.textContent).toContain('0/7');
     master.querySelector<HTMLInputElement>('input').click();
-    expect(getMd3StyleCount()).toBe(8);
-    expect(master.textContent).toContain('8/8');
+    expect(getMd3StyleCount()).toBe(7);
+    expect(master.textContent).toContain('7/7');
     master.querySelector<HTMLInputElement>('input').click();
     expect(getMd3StyleCount()).toBe(0);
-    expect(master.textContent).toContain('0/8');
+    expect(master.textContent).toContain('0/7');
     resetExterayondSettings();
   });
 

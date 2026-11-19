@@ -51,7 +51,6 @@ describe('exterayond settings store', () => {
       OEAppearanceGlassMessageMenu: true,
       OEAppearanceCenterTitle: false,
       TypefaceUseDefault: true,
-      OEAppearanceNewChatHeaderStyle: false,
       OEAppearanceNewLoadingStyle: true,
       SliderStyle: 2,
       SwitchStyle: 2,
@@ -490,34 +489,34 @@ describe('exterayond settings store', () => {
     expect(resolveChatThemeOverride(undefined, true, getThemeByEmoticon)).toEqual({theme: undefined, wallPaper: undefined});
   });
 
-  test('Forced MD3 composes eight Android settings and resets their original defaults', async() => {
+  test('Forced MD3 composes the Android settings and resets their original defaults', async() => {
     const {getMd3StyleCount, setAllMd3Styles, exterayondSettings, setExterayondSetting, resetExterayondSettings} = await loadStore();
     expect(getMd3StyleCount()).toBe(5);
     setAllMd3Styles(false);
     expect(getMd3StyleCount()).toBe(0);
     expect(exterayondSettings.SwitchStyle).toBe(0);
     setAllMd3Styles(true);
-    expect(getMd3StyleCount()).toBe(8);
+    expect(getMd3StyleCount()).toBe(7);
     expect(exterayondSettings.SliderStyle).toBe(2);
     expect(exterayondSettings.SwitchStyle).toBe(3);
     setExterayondSetting('SwitchStyle', 2);
-    expect(getMd3StyleCount()).toBe(8);
+    expect(getMd3StyleCount()).toBe(7);
     resetExterayondSettings();
     expect(getMd3StyleCount()).toBe(5);
   });
 
   test('the ninth MD3 part (dialogs) stays outside the master count and group', async() => {
     const {getMd3StyleCount, setAllMd3Styles, exterayondSettings, setExterayondSetting, resetExterayondSettings} = await loadStore();
-    // * the default is stock and the count is the eight-part x/8
+    // * the default is stock and the count is the seven-part x/7
     expect(exterayondSettings.OEAppearanceMd3Dialogs).toBe(false);
     expect(getMd3StyleCount()).toBe(5);
 
     // * the master never flips the ninth part and it never counts
     setAllMd3Styles(true);
     expect(exterayondSettings.OEAppearanceMd3Dialogs).toBe(false);
-    expect(getMd3StyleCount()).toBe(8);
+    expect(getMd3StyleCount()).toBe(7);
     setExterayondSetting('OEAppearanceMd3Dialogs', true);
-    expect(getMd3StyleCount()).toBe(8);
+    expect(getMd3StyleCount()).toBe(7);
 
     // * reset restores it like any setting
     resetExterayondSettings();
