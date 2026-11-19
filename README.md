@@ -6,6 +6,8 @@ exterayond brings the preferences and desktop-friendly parts of
 and UI foundation. The project targets desktop browsers on Linux, BSD, macOS
 and Windows.
 
+![exterayond — the app](preview.webp)
+
 The port is in progress. See the [feature checklist](docs/exterayond-feature-checklist.md),
 the [source inventory](docs/exteraless-feature-inventory.md), and the
 [task and integration log](docs/tasks/README.md). Plugin execution and parts of

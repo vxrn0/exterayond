@@ -4217,3 +4217,13 @@ Checks: production rebuilt and re-served (the served favicon-32 returns
 separate, user-owned knob (`OEAppearanceAvatarCorners`, LOOK-01) — the
 default stays 28/circle; the user slides it in Appearance if they want the
 rendered avatars squarer.
+
+Correction (095, the user's): `preview.webp` was misread as a logo asset —
+the user meant the **app screenshot itself** as the project's preview image.
+The canonical `preview.webp` now sits at the repo root: their pasted
+screenshot (1918×1078), the MD3 13–14px rounding baked as a 32px radius on
+the file (≈13.5px at the ~800px README render), saved metadata-free (24.6KB,
+corner alpha clean). It is embedded in `README.md` right after the intro;
+the mistaken `assets/logo/md3/preview.webp` (the logo reinterpretation) is
+removed. The icon set from 095 (the favicons/PWA surfaces carrying the logo)
+stands — that part was not objected to.
