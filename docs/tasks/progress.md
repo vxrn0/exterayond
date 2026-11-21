@@ -4227,3 +4227,71 @@ corner alpha clean). It is embedded in `README.md` right after the intro;
 the mistaken `assets/logo/md3/preview.webp` (the logo reinterpretation) is
 removed. The icon set from 095 (the favicons/PWA surfaces carrying the logo)
 stands — that part was not objected to.
+
+## 096 / the glass outline style — LOOK-15 wired, LOOK-14 audited complete, LOOK-16 verdict (2026-11-20)
+
+A single-key packet over the glass family. **LOOK-15** (`OEAppearanceGlassOutlineStyle`,
+int 0..2, default 0 — the exact key and default from AppearanceConfig.kt; the enum
+semantics from blur3/GlassOutlineStyle.java): GLARE keeps the stock frosted rendering
+and adds no class; SOLID writes `oe-glass-outline-solid` — the menus' drop shadow is
+replaced by a 1px inset ring in `--divider-color`; HIDDEN writes
+`oe-glass-outline-hidden` — no ring, no shadow. The styles ride the same surfaces the
+glass-off state touches (`.btn-menu.contextmenu` both forms, `.btn-menu-items`,
+`.btn-menu-reactions-container`), yield while `oe-no-glass-menus` is set (the stock
+solid popup takes over, like GlassMenuHelper's off branch), and exclude the outer
+element in the has-items-wrapper case so the ring does not double.
+
+Recorded adaptation: Android's GlassMenuHelper zeroes the menu's own strokes in every
+style (GLARE = shadow only), and the SOLID divider-color stroke belongs to the app's
+other glass surfaces (StrokeDrawable consumers) the web does not have — the web draws
+the ring on its single glass family so the three styles stay visually distinct.
+
+**LOOK-14** audited complete and closed (it carried the "implementation exists;
+completeness to be verified" mark): key, off class, hub row, backup alias
+(EtgBackup.java:342), search entry, defaults test all present. The documented
+deviation stands — the stock web menu is already frosted, so ON = stock frosted and
+OFF = solid, matching the Android toggle's glass↔solid states.
+
+**LOOK-16** recorded class 3: the row toggles LiteMode's FLAG_CHAT_BLUR (the
+blur-behind pipeline the web has no counterpart of; the web's only blur is the menus'
+unconditional backdrop-filter). EtgBackup exports neither forceBlur nor chatBlur —
+nothing stored.
+
+Support work: the EtgBackup alias `glassOutlineStyle` moved from
+KNOWN_UNSUPPORTED_KEYS to the supported table (integer 0..2, EtgBackup.java:408,
+placed before stickerShape like the Java source); the hub gained the "Glass Outline"
+selector next to "Frosted Message Menu" (Exterayond.GlassOutline{,.Glare,.Solid,.Hidden}
+lang keys); the search index regenerated (63 sections, 557 entries). Runbook 8.3
+appended.
+
+Checks: the settings and backup suites green (89), tsc clean, production rebuilt
+and re-served. The three outline states and the glass-off interaction await the
+user's visual acceptance.
+
+## 097 / the completeness audits — LOOK-07 and MEDIA-01 close, LOOK-17 verdict (2026-11-20)
+
+A no-code packet over the "implementation exists; completeness to be verified" marks.
+
+**LOOK-07 (SquareFab)** audited complete: the exact Android key
+`OEAppearanceSquareFab` (bool, default true, AppearanceConfig.kt:107) is stored with
+the same default, the hub row carries it, the `squareFab` backup alias round-trips
+(EtgBackup.java:331), the `--oe-fab-radius` root variable drives the FAB shape, and
+the jsdom suite covers the toggle. Android's two preview cards (FabShapeCell) are the
+settings screen's own chrome; the plain hub toggle is the documented adaptation.
+
+**MEDIA-01 (AlwaysSendInHD)** audited complete: the exact key `OEChatsAlwaysSendInHD`
+(ChatsConfig.kt:169, bool, default true) matches the web default, the Chats-tab row
+and the `alwaysSendInHD` alias (EtgBackup.java:382) are in place, and the real
+consumer is `photoUploadPreparation.ts` — read on every upload: on (default, the
+stock web pipeline, 2560 side limit) / off applies the SD treatment (1280 + forced
+0.9 re-encode), the documented analog of Android's PhotoEntry quality flag. The
+authenticated send path stays the user's acceptance.
+
+**LOOK-17 (disableAvatarBlur)** recorded class 3: the flag gates the profile avatar
+gallery's blurred backdrop (ProfileGalleryBlurView, ProfileActivity.blurEnabled,
+ProfileMusicView) — the web profile renders avatars sharp and carries no such layer
+(verified across peerProfile.tsx, peerProfileAvatars.ts and _profile.scss; the only
+blur is the pinned-gift halo). Android's EtgBackup exports no alias for it, so the
+key is stored nowhere.
+
+No code in this packet; the checklist count is 91/296.

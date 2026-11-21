@@ -2005,3 +2005,24 @@ account or device — that part is yours; the steps mark where.
   slots) reports that key as unsupported and leaves the stored action alone.
 - **[no chat data]**
 - PASS/FAIL:
+
+### 8.3 The glass outline style (LOOK-15, packet 096, appended)
+
+- Open any chat, right-click a message: with the default "Glass Outline:
+  Glare" (Appearance tab, under "Frosted Message Menu") the menu keeps the
+  stock look — the soft drop shadow, no outline.
+- Slide "Glass Outline" to **Solid**: reopen the menu — the drop shadow is
+  gone and a 1px hairline ring runs the menu's rounded edge (the reactions
+  bar under a message reaction gets the same ring). The reaction context
+  menu included.
+- Slide to **Hidden**: the menu has neither the ring nor the shadow — the
+  frosted card floats borderless.
+- With "Frosted Message Menu" off the outline styles yield: the menus are
+  the stock solid popup in all three outline states (the setting governs the
+  glass rendering, like GlassMenuHelper's off branch).
+- Other → Export a `.extera` with Solid set: the file carries
+  `exteraconfig.glassOutlineStyle: 1`; importing it back applies 1 and no
+  longer reports the key unsupported (it sat in the unsupported list before
+  this packet).
+- **[no chat data]**
+- PASS/FAIL:

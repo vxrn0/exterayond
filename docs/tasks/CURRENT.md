@@ -335,3 +335,23 @@ rendered correctly.
 (guarded on the filtered history's length) and quieted the dev console: logs
 are errors-only unless `?debug=1` opts in, the capture buffer still records
 the full timeline.
+
+**Packet 096 (2026-11-20) worked the glass group of the Appearance tab.**
+LOOK-15 is wired: `OEAppearanceGlassOutlineStyle` (int 0..2, default 0) —
+GLARE keeps the stock frosted menus, SOLID swaps the drop shadow for a 1px
+divider-color ring, HIDDEN removes both; the styles cover exactly
+GlassMenuHelper's web surfaces (the message context menu both forms plus the
+reactions bar) and yield while glass menus are off. LOOK-14 audited complete
+and closed (key, off class, hub row, backup alias, search entry, defaults
+test all present). LOOK-16 recorded class 3 — the row toggles LiteMode's
+FLAG_CHAT_BLUR, and the web has no blur-behind pipeline to re-enable. The
+`.extera` alias `glassOutlineStyle` moved to the supported table (integer
+0..2). Checklist count **89/296**. Runbook 8.3 appended; the outline states
+await the user's visual acceptance.
+
+**Packet 097 (2026-11-20, no code)** audited the "completeness to be
+verified" marks: LOOK-07 (SquareFab) and MEDIA-01 (AlwaysSendInHD) are
+complete end to end and closed — key, default, hub row, backup alias and a
+real consumer verified against the Android source. LOOK-17 recorded class 3:
+the avatar-blur flag gates the profile gallery's blurred backdrop, which the
+web profile does not render at all. Checklist count **91/296**.
