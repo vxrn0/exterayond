@@ -49,6 +49,7 @@ describe('exterayond settings store', () => {
       OEAppearanceSenderMiniAvatars: true,
       OEAppearanceCustomThemes: true,
       OEAppearanceGlassMessageMenu: true,
+      OEAppearanceGlassOutlineStyle: 0,
       OEAppearanceCenterTitle: false,
       TypefaceUseDefault: true,
       OEAppearanceNewLoadingStyle: true,
@@ -990,6 +991,38 @@ describe('exteraless settings application (jsdom)', () => {
     setExterayondSetting('OEAppearanceSectionRadius', 8);
     await flush();
     expect(root.style.getPropertyValue('--oe-section-radius')).toBe('8px');
+  });
+
+  test('the glass outline style drives its root classes and clamps (LOOK-15)', async() => {
+    const {setExterayondSetting, resetExterayondSettings, exterayondSettings} = await loadStore();
+    const root = document.documentElement;
+
+    // * GLARE is the stock rendering: no class at all
+    resetExterayondSettings();
+    await flush();
+    expect(root.classList.contains('oe-glass-outline-solid')).toBe(false);
+    expect(root.classList.contains('oe-glass-outline-hidden')).toBe(false);
+
+    setExterayondSetting('OEAppearanceGlassOutlineStyle', 1);
+    await flush();
+    expect(root.classList.contains('oe-glass-outline-solid')).toBe(true);
+    expect(root.classList.contains('oe-glass-outline-hidden')).toBe(false);
+
+    setExterayondSetting('OEAppearanceGlassOutlineStyle', 2);
+    await flush();
+    expect(root.classList.contains('oe-glass-outline-solid')).toBe(false);
+    expect(root.classList.contains('oe-glass-outline-hidden')).toBe(true);
+
+    // * Android's integer() backup validation range: 0..2 (EtgBackup.java:408)
+    setExterayondSetting('OEAppearanceGlassOutlineStyle', 5);
+    await flush();
+    expect(exterayondSettings.OEAppearanceGlassOutlineStyle).toBe(2);
+    expect(root.classList.contains('oe-glass-outline-hidden')).toBe(true);
+
+    setExterayondSetting('OEAppearanceGlassOutlineStyle', 0);
+    await flush();
+    expect(root.classList.contains('oe-glass-outline-solid')).toBe(false);
+    expect(root.classList.contains('oe-glass-outline-hidden')).toBe(false);
   });
 
   test('the floating new-chat preference is a live root class and reset clears it', async() => {

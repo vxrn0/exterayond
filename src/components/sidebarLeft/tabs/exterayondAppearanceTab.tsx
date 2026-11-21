@@ -566,6 +566,18 @@ const ExterayondAppearance = () => {
           </Row.CheckboxFieldToggle>
           <Row.Title>{i18n('Exterayond.GlassMessageMenu')}</Row.Title>
         </Row>
+        {/* * LOOK-15 (Android's GlassOutlineStyle over the blur3 glass): the
+          * outline style of the frosted surfaces. GLARE is the stock rendering
+          * and needs no class; SOLID / HIDDEN restyle the shadow+outline. */}
+        <RangeSettingSelector
+          textLeft={i18n('Exterayond.GlassOutline')}
+          textRight={(value) => i18n(value === 0 ? 'Exterayond.GlassOutline.Glare' : value === 1 ? 'Exterayond.GlassOutline.Solid' : 'Exterayond.GlassOutline.Hidden')}
+          value={exterayondSettings.OEAppearanceGlassOutlineStyle}
+          minValue={0}
+          maxValue={2}
+          step={1}
+          onChange={(value) => setExterayondSetting('OEAppearanceGlassOutlineStyle', value)}
+        />
       </Section>
       <Section>
         <Row>

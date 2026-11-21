@@ -66,7 +66,8 @@ export const KNOWN_UNSUPPORTED_KEYS: string[] = [
   'cameraMirrorMode', 'rememberLastUsedCamera', 'startWithWideAngleCamera', 'staticZoom',
   'preferOriginalQuality', 'swipeToPip', 'unmuteWithVolumeButtons',
   'useSystemIconShape', 'useGoogleCrashlytics',
-  'inAppVibration', 'titleText', 'downloadSpeedBoost', 'tabletMode', 'glassOutlineStyle',
+  // * glassOutlineStyle moved to SUPPORTED (packet 096): the hub row exists
+  'inAppVibration', 'titleText', 'downloadSpeedBoost', 'tabletMode',
   'doubleTapSeekDuration', 'cameraType', 'videoMessagesCamera',
   // * doubleTapAction / doubleTapActionOutOwner moved to SUPPORTED (packet 089):
   // * Android's EtgBackup DOES export them, under its exteraGram remap tables
@@ -213,6 +214,10 @@ const SUPPORTED: SupportedEntry[] = [
   // * Android's alias is a boolean: true = counters on (mode 0), false = off
   // * (mode 2); the middle mode never round-trips through the format
   {section: SECTION_EXTERA, key: 'tabCounter', kind: 'bool', storeKey: 'IgnoreUnreadCount', toEtg: (value) => value !== 2, toOurs: (value) => value ? 0 : 2},
+  // * Android exports AppearanceConfig.glassOutlineStyle under the same name
+  // * (EtgBackup.java:408, integer 0..2): the outline style of the glass
+  // * surfaces — GLARE (stock) / SOLID (divider ring, shadow off) / HIDDEN
+  {section: SECTION_EXTERA, key: 'glassOutlineStyle', kind: 'int', min: 0, max: 2, storeKey: 'OEAppearanceGlassOutlineStyle'},
   {section: SECTION_EXTERA, key: 'stickerShape', kind: 'int', min: 0, max: 2, storeKey: 'OEChatsStickerShape'},
   // * the double-tap actions through Android's exteraGram remap tables above
   // * (EtgBackup.java:421-426), next to stickerShape like the Java source

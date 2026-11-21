@@ -65,6 +65,13 @@ export const OE_DEFAULTS = {
   OEAppearanceCustomThemes: true,
   OEAppearanceGlassMessageMenu: true,
   /**
+   * Android AppearanceConfig.glassOutlineStyle (int 0..2, default 0):
+   * 0 GLARE — the stock look with the menu shadow, 1 SOLID — a solid outline
+   * in the divider color with the shadow off, 2 HIDDEN — no outline and no
+   * shadow (blur3/GlassOutlineStyle.java).
+   */
+  OEAppearanceGlassOutlineStyle: 0,
+  /**
    * Android AppearanceConfig.centerTitle, migrated to NaConfig's
    * centerActionBarTitle: the sidebar header title is centered.
    */
@@ -512,6 +519,7 @@ type NumericKey = {
 const NUMERIC_RANGES: {[K in NumericKey]: readonly [min: number, max: number]} = {
   OEAppearanceAvatarCorners: [0, OE_AVATAR_CORNERS_MAX],
   OEAppearanceSectionRadius: [0, OE_AVATAR_CORNERS_MAX],
+  OEAppearanceGlassOutlineStyle: [0, 2],
   SliderStyle: [0, 2],
   translatorMode: [0, 2],
   SwitchStyle: [0, 3],
@@ -1392,6 +1400,10 @@ if(typeof document !== 'undefined') {
       // * the replyColors / replyEmoji / replyBackground trio defaults to true;
       // * the classes mark only the off states, so the default adds nothing
       classList.toggle('oe-no-glass-menus', !exterayondSettings.OEAppearanceGlassMessageMenu);
+      // * the glass outline style (LOOK-15): GLARE (0) is the stock rendering
+      // * and adds no class; SOLID (1) / HIDDEN (2) restyle the shadow+outline
+      classList.toggle('oe-glass-outline-solid', exterayondSettings.OEAppearanceGlassOutlineStyle === 1);
+      classList.toggle('oe-glass-outline-hidden', exterayondSettings.OEAppearanceGlassOutlineStyle === 2);
       classList.toggle('oe-center-title', exterayondSettings.OEAppearanceCenterTitle);
       classList.toggle('oe-system-font', exterayondSettings.TypefaceUseDefault);
       classList.toggle('oe-attached-sidebar', exterayondSettings.OEAppearanceAttachedSidebar);

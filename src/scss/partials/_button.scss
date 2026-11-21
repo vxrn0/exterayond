@@ -140,6 +140,29 @@ $btn-menu-z-index: 4;
     backdrop-filter: none;
   }
 
+  // * exteraless glassOutlineStyle (LOOK-15): the outline style of the frosted
+  // * surfaces — Android's GlassOutlineStyle over the blur3 glass. GLARE (0)
+  // * is the stock rendering (the menu drop shadow, no outline strokes) and
+  // * adds no class; SOLID (1) swaps the drop shadow for a solid outline in
+  // * the divider color; HIDDEN (2) removes the outline and the shadow. The
+  // * web's glass family is the menus (GlassMenuHelper's message menu and
+  // * reactions bar), so the styles ride the same elements the glass-off
+  // * state touches, and yield while glass menus are off — the stock solid
+  // * popup takes over, like GlassMenuHelper's off branch. The items-wrapper
+  // * case is excluded on the outer element: it unsets its own shadow and the
+  // * inner .btn-menu-items carries the surface.
+  :root.oe-glass-outline-solid:not(.oe-no-glass-menus) &.contextmenu:not(.has-items-wrapper),
+  :root.oe-glass-outline-solid:not(.oe-no-glass-menus) &-items,
+  :root.oe-glass-outline-solid:not(.oe-no-glass-menus) &-reactions-container {
+    box-shadow: inset 0 0 0 1px var(--divider-color);
+  }
+
+  :root.oe-glass-outline-hidden:not(.oe-no-glass-menus) &.contextmenu:not(.has-items-wrapper),
+  :root.oe-glass-outline-hidden:not(.oe-no-glass-menus) &-items,
+  :root.oe-glass-outline-hidden:not(.oe-no-glass-menus) &-reactions-container {
+    box-shadow: none;
+  }
+
   &,
   &-transition {
     visibility: hidden;

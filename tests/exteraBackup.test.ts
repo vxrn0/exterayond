@@ -399,6 +399,31 @@ describe('exteraless .extera backup (EtgBackup contract)', () => {
     }
   });
 
+  // * packet 096: Android exports AppearanceConfig.glassOutlineStyle under
+  // * the same name (EtgBackup.java:408, integer 0..2)
+  it('maps glassOutlineStyle to the glass outline setting both ways, 0..2', () => {
+    for(const style of [0, 1, 2]) {
+      setExterayondSetting('OEAppearanceGlassOutlineStyle', style);
+      const parsed = JSON.parse(etgBackup.buildBackup(false, exterayondSettings));
+      expect(parsed.exteraconfig.glassOutlineStyle).toBe(style);
+
+      setExterayondSetting('OEAppearanceGlassOutlineStyle', (style + 1) % 3);
+      const result = applyExteraBackup({[SECTION_EXTERA]: {glassOutlineStyle: style}});
+      expect(result.applied).toBe(1);
+      expect(exterayondSettings.OEAppearanceGlassOutlineStyle).toBe(style);
+      expect(result.unsupported).not.toContain('glassOutlineStyle');
+    }
+  });
+
+  it('rejects an out-of-range or non-integer glassOutlineStyle like an untrusted file', () => {
+    for(const bad of [-1, 3, 0.5, '1', null]) {
+      setExterayondSetting('OEAppearanceGlassOutlineStyle', 2);
+      const result = applyExteraBackup({[SECTION_EXTERA]: {glassOutlineStyle: bad}});
+      expect(result.applied).toBe(0);
+      expect(exterayondSettings.OEAppearanceGlassOutlineStyle).toBe(2);
+    }
+  });
+
   it('exports the double-tap actions through Android\'s exteraGram remap tables (packet 089)', () => {
     // * EtgBackup.java:421-426, the tables verbatim: exteraGram numbers the
     // * actions differently from the Nagram DoubleTap enum, and only the

@@ -202,6 +202,7 @@ const generated: GeneratedSettingsSearchData = {
     {id: 'AppExterayondAppearanceTab:Exterayond.CenterTitle', sectionId: 'AppExterayondAppearanceTab', kind: 'toggle', titleLangKey: 'Exterayond.CenterTitle'},
     {id: 'AppExterayondAppearanceTab:Exterayond.CustomThemes', sectionId: 'AppExterayondAppearanceTab', kind: 'toggle', titleLangKey: 'Exterayond.CustomThemes'},
     {id: 'AppExterayondAppearanceTab:Exterayond.GlassMessageMenu', sectionId: 'AppExterayondAppearanceTab', kind: 'toggle', titleLangKey: 'Exterayond.GlassMessageMenu'},
+    {id: 'AppExterayondAppearanceTab:Exterayond.GlassOutline', sectionId: 'AppExterayondAppearanceTab', kind: 'row', titleLangKey: 'Exterayond.GlassOutline'},
     {id: 'AppExterayondAppearanceTab:Exterayond.HideActionBarStatus', sectionId: 'AppExterayondAppearanceTab', kind: 'toggle', titleLangKey: 'Exterayond.HideActionBarStatus'},
     {id: 'AppExterayondAppearanceTab:Exterayond.MainMenu', sectionId: 'AppExterayondAppearanceTab', kind: 'row', titleLangKey: 'Exterayond.MainMenu'},
     {id: 'AppExterayondAppearanceTab:Exterayond.Md3', sectionId: 'AppExterayondAppearanceTab', kind: 'subsection', titleLangKey: 'Exterayond.Md3'},
