@@ -1,5 +1,7 @@
 # exterayond
 
+[![Built with OpenCode](https://opencode.ai/brand/badges/opencode-built-with-f-light-20.svg)](https://opencode.ai)
+
 exterayond brings the preferences and desktop-friendly parts of
 [exteraless](https://github.com/exteraless/exteraless) to the web. It uses
 [Telegram Web K](https://github.com/morethanwords/tweb) as its Telegram client
