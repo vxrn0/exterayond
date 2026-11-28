@@ -81,6 +81,12 @@ features underneath it.
   `git -C .research/android ls-tree -r --name-only HEAD`. The settings hub is
   `TMessagesProj/src/main/java/app/exteraless/settings/`, configs under
   `TMessagesProj/src/main/kotlin/app/exteraless/`.
+- exteraGram source: `.research/exteraGram` (`exteraSquad/exteraGram`, `b4d852f4`,
+  the 13.2.2 release source), read-only. It is the original owner of the `.extera`
+  backup contract and the exteraGram-key mapping that `EtgBackup` ports, so it is
+  the first reference for those contracts; exteraless above stays the pinned source
+  for app behavior. GPL-3.0 with additional terms on the exteraGram name and logo:
+  read as reference, never copy code into exterayond.
 - Values come from source, not guessed from screenshots. Screenshots reveal effective
   configuration; the user's before/after pairs live sanitized in
   `docs/reference/before/` and `docs/reference/after/` at matching viewport/state.
