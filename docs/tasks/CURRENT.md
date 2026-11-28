@@ -355,3 +355,16 @@ complete end to end and closed — key, default, hub row, backup alias and a
 real consumer verified against the Android source. LOOK-17 recorded class 3:
 the avatar-blur flag gates the profile gallery's blurred backdrop, which the
 web profile does not render at all. Checklist count **91/296**.
+
+**Beta 1 launch (2026-11-29, packet 098).** The user directed the beta 1
+release: no git tags, no version scheme, hosting on Cloudflare. Done: the
+one red CI test fixed (the Appearance slider list missed LOOK-15's
+GlassOutline row), the changelog sync's empty state committed (tweb's
+upstream entries were stale build leftovers), exteraGram pinned in
+`.research/exteraGram` at `b4d852f4` as the `.extera` contract reference
+(Sources updated; read-only, no copying), typecheck + production build +
+bundle checks green — `dist/` is the beta 1 artifact. The deploy itself
+belongs to the user's Cloudflare account (CF Pages Git integration or
+`wrangler pages deploy dist`); the routes and settings are recorded in
+progress.md packet 098. Next concrete action: the user connects hosting;
+afterwards verify the deployed app boots and note the live URL here.

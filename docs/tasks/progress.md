@@ -4295,3 +4295,46 @@ blur is the pinned-gift halo). Android's EtgBackup exports no alias for it, so t
 key is stored nowhere.
 
 No code in this packet; the checklist count is 91/296.
+
+## 098 / beta 1 release prep — CI fix, changelog sync, exteraGram pinned, production build (2026-11-29)
+
+The user directed the beta 1 launch: no git tags, no version scheme changes,
+hosting on Cloudflare.
+
+**CI fix.** The main branch's CI had one failing test since packet 096:
+`tests/exterayondTabs.test.tsx` "renders the wired sliders with the Android
+ranges and defaults" kept the pre-096 length and missed LOOK-15's
+`Exterayond.GlassOutline` row (0..2, default 0, rendered after SectionRadius).
+The expectation now counts it with a comment; the suite passes (25), and with
+it all 18 exterayond suites (278 tests). The other 6302 unit tests passed on
+CI for the identical tree (2026-11-23 run, 604 files) — the full local suite
+was not re-run under the no-repeat rule.
+
+**Changelog sync.** Running the build chain surfaced that
+`generate_changelog.js` wipes `public/changelogs/` and regenerates from
+`docs/CHANGELOG*.md`, which does not exist — the committed files were tweb's
+upstream entries (`en_0.8.6` … `ru_2.1.0`). The empty state is committed
+(3b9f823); every build now reproduces it. The in-app What's-new fetch 404s
+silently until a beta changelog is written; a `docs/CHANGELOG.md` with a
+`### <version>` section per language is the mechanism if one is wanted.
+
+**exteraGram pinned.** `.research/exteraGram` is the read-only clone of
+`exteraSquad/exteraGram` at `b4d852f4` (the 13.2.2 release source, GPL-3.0
+plus name/logo additional terms), documented in the Sources section of
+`docs/agents/exterayond.md` as the first reference for the `.extera` backup
+contract and the exteraGram key mapping; exteraless `8b7ec40` stays the
+pinned source for app behavior. Read only — no code is copied.
+
+**Production build.** typecheck (tsc + scss types) clean, changelog sync run,
+`vite build` clean (rolldown, 13.2 s), `check-bundle-mangling` clean (667
+chunks, no miscompiled defaults, no lost string literals). `dist/` is 61 MB
+and is the beta 1 artifact for upload.
+
+**Hosting.** Per the user's direction the build is hosted on Cloudflare;
+the deploy step belongs to the user's Cloudflare account. Recorded routes:
+CF Pages Git integration on `vxrn0/exterayond` (build command
+`node src/scripts/generate_changelog.js && pnpm exec vite build`, output
+`dist`, env `NODE_VERSION=24`, `PNPM_VERSION=11.16.0`) — every push to main
+auto-deploys; or direct upload via `wrangler pages deploy dist` with the
+user's own wrangler auth. No tags, package.json version untouched, per the
+user's instruction.
