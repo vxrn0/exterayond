@@ -230,7 +230,9 @@ describe('the exteraless Appearance tab', () => {
       {name: 'Exterayond.TabCounter', value: 1, min: 0, max: 2},
       {name: 'Exterayond.AvatarCorners', value: OE_DEFAULTS.OEAppearanceAvatarCorners, min: 0, max: 28},
       {name: 'Exterayond.BubbleRadius', value: OE_DEFAULTS.bubbleRadius, min: 0, max: 17},
-      {name: 'Exterayond.SectionRadius', value: OE_DEFAULTS.OEAppearanceSectionRadius, min: 0, max: 28}
+      {name: 'Exterayond.SectionRadius', value: OE_DEFAULTS.OEAppearanceSectionRadius, min: 0, max: 28},
+      // * LOOK-15's glass outline style: GLARE / SOLID / HIDDEN (packet 096)
+      {name: 'Exterayond.GlassOutline', value: 0, min: 0, max: 2}
     ]);
   });
 
